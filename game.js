@@ -192,8 +192,8 @@ function _weightedPick(weightMap) {
 // SPECIAL FOODS PREFERENCE (localStorage)
 // ============================================================
 function isSpecialFoodsEnabled() {
-  try { return localStorage.getItem('snakeSpecialFoodsEnabled') !== 'false'; }
-  catch (e) { return true; }
+  try { return localStorage.getItem('snakeSpecialFoodsEnabled') === 'true'; }
+  catch (e) { return false; }
 }
 
 function setSpecialFoodsEnabled(enabled) {
