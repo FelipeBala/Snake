@@ -1,17 +1,22 @@
 // ============================================================
-// T004 — SHARED CONSTANTS
+// SHARED CONSTANTS
 // ============================================================
 const CELL            = 28;   // grid cell size in pixels
 const COLS            = 20;   // grid columns
 const ROWS            = 20;   // grid rows
 const CANVAS_W        = 560;  // COLS × CELL
-const CANVAS_H        = 600;  // ROWS × CELL + HUD_H
 const HUD_H           = 40;   // height reserved above grid
+const CARD_STRIP_H    = 32;   // card strip below grid
+const CANVAS_H        = HUD_H + ROWS * CELL + CARD_STRIP_H;  // 632
 
-const TICK_BASE       = 150;  // initial tick delay (ms)
-const TICK_MIN        = 80;   // minimum tick delay (ms)
-const TICK_STEP       = 5;    // ms reduction per speed-up event
-const SCORE_PER_SPEEDUP = 5;  // points between speed-up events
+const TICK_BASE         = 150;  // initial tick delay (ms)
+const TICK_MIN          = 80;   // minimum tick delay (ms)
+const TICK_STEP         = 5;    // ms reduction per speed-up event
+const SCORE_PER_SPEEDUP = 5;    // points between speed-up events
+
+const RUSH_BOOST_DURATION = 5000; // ms
+const RUSH_SPEED_FACTOR   = 1.5;
+const STAR_SPEED_FACTOR   = 2;   // STAR timer delay = baseDelay × 2
 
 // Color palette
 const C_BG         = 0x1a1a2e;
@@ -21,6 +26,27 @@ const C_GRID_B     = 0x1a1a2e;
 const C_SNAKE_HEAD = 0x00e676;
 const C_SNAKE_BODY = 0x00c853;
 const C_FOOD       = 0xffeb3b;
+const C_OBSTACLE   = 0x455a64;
+
+// Food type keys
+const FOOD_TYPES = {
+  STANDARD: 'STANDARD', DOUBLE: 'DOUBLE', PENTA: 'PENTA',
+  TRIM: 'TRIM', RUSH: 'RUSH', STAR: 'STAR', BOMB: 'BOMB'
+};
+
+// Colors per food type
+const FOOD_COLORS = {
+  STANDARD: 0xffeb3b, DOUBLE: 0x00bcd4, PENTA: 0xffc400,
+  TRIM: 0xff6d00, RUSH: 0xaa00ff, STAR: 0xffffff, BOMB: 0xb71c1c
+};
+
+// Card generation weights
+const RARITY_WEIGHTS = {
+  STANDARD: 70, DOUBLE: 12, TRIM: 7, RUSH: 6, STAR: 3, PENTA: 1, BOMB: 1
+};
+const CARD_SIZE_WEIGHTS = [
+  { size: 1, w: 70 }, { size: 2, w: 18 }, { size: 3, w: 9 }, { size: 4, w: 3 }
+];
 
 // ============================================================
 // T005 — DIRECTION CONSTANTS
@@ -84,32 +110,257 @@ function makeButton(scene, cx, cy, label, bgColor, textColor = '#ffffff', w = 20
 }
 
 // ============================================================
-// T007–T015 — GAME SCENE (US1: Play a Full Game Round)
+// DRAWING HELPERS (T004, T005)
+// ============================================================
+
+// Draw a food item centered at pixel (cx, cy) on the shared Graphics layer.
+function drawFoodShape(gfx, food, cx, cy) {
+  gfx.fillStyle(FOOD_COLORS[food.type], 1);
+  switch (food.type) {
+    case FOOD_TYPES.STANDARD:
+      gfx.fillRoundedRect(cx - 11, cy - 11, 22, 22, 5);
+      break;
+    case FOOD_TYPES.DOUBLE: {
+      // 4-point diamond
+      const pts = [
+        { x: cx, y: cy - 12 }, { x: cx + 12, y: cy },
+        { x: cx, y: cy + 12 }, { x: cx - 12, y: cy }
+      ];
+      gfx.fillPoints(pts, true, true);
+      break;
+    }
+    case FOOD_TYPES.PENTA: {
+      // 5-point star — 10 vertices, alternating r_outer=12 / r_inner=6
+      const pts = [];
+      for (let i = 0; i < 10; i++) {
+        const angle = (Math.PI / 5) * i - Math.PI / 2;
+        const r = i % 2 === 0 ? 12 : 6;
+        pts.push({ x: cx + Math.cos(angle) * r, y: cy + Math.sin(angle) * r });
+      }
+      gfx.fillPoints(pts, true, true);
+      break;
+    }
+    case FOOD_TYPES.TRIM:
+      // Wide flat pill
+      gfx.fillRoundedRect(cx - 12, cy - 5, 24, 10, 5);
+      break;
+    case FOOD_TYPES.RUSH:
+      // Upward-pointing triangle
+      gfx.fillTriangle(cx, cy - 12, cx + 10, cy + 8, cx - 10, cy + 8);
+      break;
+    case FOOD_TYPES.STAR: {
+      // 4-point star — 8 vertices, r_outer=11 / r_inner=5
+      // Skip draw on blink-off frames (T034 visibility toggle)
+      if (food.visible === false) break;
+      const pts = [];
+      for (let i = 0; i < 8; i++) {
+        const angle = (Math.PI / 4) * i - Math.PI / 2;
+        const r = i % 2 === 0 ? 11 : 5;
+        pts.push({ x: cx + Math.cos(angle) * r, y: cy + Math.sin(angle) * r });
+      }
+      gfx.fillPoints(pts, true, true);
+      break;
+    }
+    case FOOD_TYPES.BOMB:
+      // Dark red circle with X crosshair
+      gfx.fillCircle(cx, cy, 10);
+      gfx.lineStyle(2, 0x7f0000, 1);
+      gfx.lineBetween(cx - 6, cy - 6, cx + 6, cy + 6);
+      gfx.lineBetween(cx + 6, cy - 6, cx - 6, cy + 6);
+      break;
+  }
+}
+
+// Draw a FOOD-BOMB obstacle tile at grid cell (obs.x, obs.y).
+function drawObstacle(gfx, obs) {
+  gfx.fillStyle(C_OBSTACLE, 1);
+  gfx.fillRect(obs.x * CELL, HUD_H + obs.y * CELL, CELL, CELL);
+  gfx.lineStyle(2, 0x263238, 1);
+  gfx.lineBetween(
+    obs.x * CELL + 4,        HUD_H + obs.y * CELL + 4,
+    obs.x * CELL + CELL - 4, HUD_H + obs.y * CELL + CELL - 4
+  );
+  gfx.lineBetween(
+    obs.x * CELL + CELL - 4, HUD_H + obs.y * CELL + 4,
+    obs.x * CELL + 4,        HUD_H + obs.y * CELL + CELL - 4
+  );
+}
+
+// ============================================================
+// CARD GENERATION — fetchNextCard (T006)
+// ============================================================
+
+// Internal weighted random picker.
+function _weightedPick(weightMap) {
+  const total = Object.values(weightMap).reduce((a, b) => a + b, 0);
+  let roll = Math.random() * total;
+  for (const [key, w] of Object.entries(weightMap)) {
+    roll -= w;
+    if (roll <= 0) return key;
+  }
+  return Object.keys(weightMap)[0];
+}
+
+// Server-integration seam: swap this function to use a real server response.
+// telemetry: TelemetryRecord[] — last ≤10 consumed cards (currently unused locally).
+function fetchNextCard(telemetry) {
+  // Pick card size via CARD_SIZE_WEIGHTS cumulative wheel
+  const sizeTotal = CARD_SIZE_WEIGHTS.reduce((a, b) => a + b.w, 0);
+  let sizeRoll = Math.random() * sizeTotal;
+  let cardSize = 1;
+  for (const entry of CARD_SIZE_WEIGHTS) {
+    sizeRoll -= entry.w;
+    if (sizeRoll <= 0) { cardSize = entry.size; break; }
+  }
+
+  const slots = [];
+  let pentaCount = 0;
+  let bombCount  = 0;
+
+  for (let i = 0; i < cardSize; i++) {
+    let type;
+    do {
+      type = _weightedPick(RARITY_WEIGHTS);
+      if (type === FOOD_TYPES.PENTA && pentaCount >= 1) continue;
+      if (type === FOOD_TYPES.BOMB  && bombCount  >= 1) continue;
+      break;
+    } while (true);
+
+    if (type === FOOD_TYPES.PENTA) pentaCount++;
+    if (type === FOOD_TYPES.BOMB)  bombCount++;
+    slots.push(type);
+  }
+
+  return { slots };
+}
+
+// ============================================================
+// EVENT CARD MANAGER (T007–T014)
+// ============================================================
+class EventCardManager {
+  constructor(scene) {
+    this.scene      = scene;
+    this.queue      = [];
+    this.activeCard = null;
+    this.telemetry  = [];
+  }
+
+  // Return all grid cells not occupied by snake, obstacles, or existing foods.
+  getFreeCells() {
+    const state = this.scene.state;
+    const free  = [];
+    for (let x = 0; x < COLS; x++) {
+      for (let y = 0; y < ROWS; y++) {
+        const occupied =
+          state.snake.some(s => s.x === x && s.y === y) ||
+          state.obstacles.some(o => o.x === x && o.y === y) ||
+          state.foods.some(f => f.x === x && f.y === y);
+        if (!occupied) free.push({ x, y });
+      }
+    }
+    return free;
+  }
+
+  // Append one new card to the end of the queue.
+  appendNewCard() {
+    this.queue.push(fetchNextCard(this.telemetry));
+  }
+
+  // Record telemetry for the just-completed active card.
+  recordTelemetry() {
+    this.telemetry.push({
+      cardSlots:     [...this.activeCard.slots],
+      timeToConsume: parseFloat(((Date.now() - this.activeCard.drawnAt) / 1000).toFixed(2)),
+      snakeLength:   this.scene.state.snake.length,
+      score:         this.scene.state.score
+    });
+    if (this.telemetry.length > 10) this.telemetry.shift();
+  }
+
+  // Pop the front card, place its foods, set activeCard, replenish queue.
+  activateCard() {
+    const cardDef = this.queue.shift();
+    if (!cardDef) return;
+
+    const free  = this.getFreeCells();
+    let placed  = 0;
+
+    for (const slot of cardDef.slots) {
+      if (free.length === 0) break;
+      const idx  = Phaser.Math.Between(0, free.length - 1);
+      const cell = free.splice(idx, 1)[0];
+      const food = {
+        type: slot, x: cell.x, y: cell.y,
+        starDir: null, starTimer: null, gen: 0, visible: true
+      };
+      this.scene.state.foods.push(food);
+      if (slot === FOOD_TYPES.STAR) this.scene.createStarTimer(food);
+      placed++;
+    }
+
+    this.activeCard = { slots: [...cardDef.slots], remaining: placed, drawnAt: Date.now() };
+    this.appendNewCard();
+    this.scene.updateCardStrip();
+    this.scene.redraw();
+  }
+
+  // Called each time the snake consumes a food from the active card.
+  onFoodConsumed(food) {
+    if (!this.activeCard) return;
+    this.activeCard.remaining--;
+    this.scene.updateCardStrip();
+    if (this.activeCard.remaining <= 0) {
+      this.recordTelemetry();
+      this.activateCard();
+    }
+  }
+
+  // Pre-fill the queue (10 cards) then activate the first one.
+  init() {
+    for (let i = 0; i < 10; i++) this.appendNewCard();
+    this.activateCard();
+  }
+
+  // Cancel all STAR timers and clean up.
+  destroy() {
+    for (const food of this.scene.state.foods) {
+      if (food.starTimer) { food.starTimer.remove(true); food.starTimer = null; }
+    }
+    this.activeCard = null;
+  }
+}
+
+// ============================================================
+// GAME SCENE
 // ============================================================
 class GameScene extends Phaser.Scene {
   constructor() {
     super('GameScene');
   }
 
-  // T007 — scene setup
+  // T025 — scene setup
   create(data) {
     this.state = {
-      snake:       [{ x: 12, y: 10 }, { x: 11, y: 10 }, { x: 10, y: 10 }],
-      dir:         DIRS.RIGHT,
-      nextDir:     DIRS.RIGHT,
-      food:        null,
-      score:       0,
-      personalBest: data?.personalBest ?? 0,  // T018: thread personalBest
-      growing:     false,
-      tickDelay:   TICK_BASE,
-      tickRef:     null
+      snake:           [{ x: 12, y: 10 }, { x: 11, y: 10 }, { x: 10, y: 10 }],
+      dir:             DIRS.RIGHT,
+      nextDir:         DIRS.RIGHT,
+      foods:           [],
+      obstacles:       [],
+      score:           0,
+      personalBest:    data?.personalBest ?? 0,
+      growthRemaining: 0,
+      baseDelay:       TICK_BASE,
+      tickDelay:       TICK_BASE,
+      tickRef:         null,
+      tickGen:         0,
+      rushActive:      false,
+      rushTimerRef:    null
     };
 
     this.gfx     = this.add.graphics();
     this.cursors = this.input.keyboard.createCursorKeys();
     this.wasd    = this.input.keyboard.addKeys('W,A,S,D');
 
-    // T016 — HUD text objects
     this.scoreTxt = this.add.text(12, HUD_H / 2, 'Pontos: 0', {
       fontFamily: '"Trebuchet MS", Arial',
       fontSize:   '22px',
@@ -124,15 +375,14 @@ class GameScene extends Phaser.Scene {
       color:      '#ffeb3b'
     }).setOrigin(1, 0.5);
 
-    this.spawnFood();
-    this.updateHUD();
+    this.cardStripGfx   = this.add.graphics();
+    this.cardStripTexts = [];
 
-    this.state.tickRef = this.time.addEvent({
-      delay:         TICK_BASE,
-      callback:      this.tick,
-      callbackScope: this,
-      loop:          true
-    });
+    this.cardManager = new EventCardManager(this);
+    this.cardManager.init();  // places first card's foods, calls redraw + updateCardStrip
+
+    this.updateHUD();
+    this.restartTick(TICK_BASE);
   }
 
   // T008 — buffer directional input
@@ -151,7 +401,7 @@ class GameScene extends Phaser.Scene {
     }
   }
 
-  // T009 — core game-loop tick
+  // T026 — core game-loop tick
   tick() {
     const state = this.state;
     state.dir = state.nextDir;
@@ -167,26 +417,37 @@ class GameScene extends Phaser.Scene {
       return;
     }
 
+    // Obstacle collision (FOOD-BOMB tiles)
+    if (state.obstacles.some(o => o.x === newHead.x && o.y === newHead.y)) {
+      this.gameOver();
+      return;
+    }
+
     // Self collision
     if (state.snake.some(s => s.x === newHead.x && s.y === newHead.y)) {
       this.gameOver();
       return;
     }
 
-    // Food collision
-    if (state.food && newHead.x === state.food.x && newHead.y === state.food.y) {
-      state.score++;
-      state.growing = true;
-      this.spawnFood();
-      this.updateSpeed();  // T012
-      this.updateHUD();    // T017
+    // Food collision — reverse loop so splicing doesn't skip items
+    for (let i = state.foods.length - 1; i >= 0; i--) {
+      const f = state.foods[i];
+      if (f.x === newHead.x && f.y === newHead.y) {
+        if (f.starTimer) { f.starTimer.remove(true); f.starTimer = null; }
+        state.foods.splice(i, 1);
+        this.applyFoodEffect(f);
+        this.cardManager.onFoodConsumed(f);
+        break;
+      }
     }
 
-    if (!state.growing) {
+    // Growth / tail pop
+    if (state.growthRemaining > 0) {
+      state.growthRemaining--;
+    } else {
       state.snake.pop();
     }
     state.snake.unshift(newHead);
-    state.growing = false;  // reset — only one extra segment per food eaten
 
     // Win check
     if (state.snake.length === COLS * ROWS) {
@@ -197,21 +458,7 @@ class GameScene extends Phaser.Scene {
     this.redraw();
   }
 
-  // T010 — choose a random empty cell for food
-  spawnFood() {
-    const cells = [];
-    for (let c = 0; c < COLS; c++) {
-      for (let r = 0; r < ROWS; r++) {
-        if (!this.state.snake.some(s => s.x === c && s.y === r)) {
-          cells.push({ x: c, y: r });
-        }
-      }
-    }
-    this.state.food = cells[Math.floor(Math.random() * cells.length)];
-    this.redraw();
-  }
-
-  // T011 — render grid, food, and snake
+  // T032 — render grid, obstacles, foods, and snake
   redraw() {
     const gfx   = this.gfx;
     const state = this.state;
@@ -229,15 +476,15 @@ class GameScene extends Phaser.Scene {
       }
     }
 
-    // Food
-    if (state.food) {
-      gfx.fillStyle(C_FOOD, 1);
-      gfx.fillRoundedRect(
-        state.food.x * CELL + 3,
-        HUD_H + state.food.y * CELL + 3,
-        CELL - 6, CELL - 6, 6
-      );
-    }
+    // Obstacles (FOOD-BOMB tiles)
+    state.obstacles.forEach(obs => drawObstacle(gfx, obs));
+
+    // Foods (all types via drawFoodShape)
+    state.foods.forEach(food => {
+      const cx = food.x * CELL + CELL / 2;
+      const cy = HUD_H + food.y * CELL + CELL / 2;
+      drawFoodShape(gfx, food, cx, cy);
+    });
 
     // Snake body (all segments except head)
     gfx.fillStyle(C_SNAKE_BODY, 1);
@@ -252,20 +499,31 @@ class GameScene extends Phaser.Scene {
     gfx.fillRoundedRect(head.x * CELL + 1, HUD_H + head.y * CELL + 1, CELL - 2, CELL - 2, 6);
   }
 
-  // T012 — decrease tick delay every SCORE_PER_SPEEDUP points
+  // T015 — restart the tick timer at a new delay, incrementing tickGen
+  restartTick(delay) {
+    this.state.tickGen++;
+    if (this.state.tickRef) this.state.tickRef.remove(false);
+    this.state.tickDelay = delay;
+    this.state.tickRef = this.time.addEvent({
+      delay, callback: this.tick, callbackScope: this, loop: true
+    });
+  }
+
+  // T027 — score-based speed increase; updates baseDelay; refreshes STAR timers (A1 fix)
   updateSpeed() {
     const state = this.state;
     if (state.score > 0 && state.score % SCORE_PER_SPEEDUP === 0) {
-      const newDelay = Math.max(TICK_MIN, state.tickDelay - TICK_STEP);
-      if (newDelay !== state.tickDelay) {
-        state.tickDelay = newDelay;
-        state.tickRef.remove(false);
-        state.tickRef = this.time.addEvent({
-          delay:         newDelay,
-          callback:      this.tick,
-          callbackScope: this,
-          loop:          true
-        });
+      const newBase = Math.max(TICK_MIN, state.baseDelay - TICK_STEP);
+      if (newBase !== state.baseDelay) {
+        state.baseDelay = newBase;
+        if (!state.rushActive) {
+          this.restartTick(newBase);
+          // Refresh STAR timers so they track the new speed
+          state.foods.filter(f => f.type === FOOD_TYPES.STAR).forEach(f => {
+            if (f.starTimer) f.starTimer.remove(true);
+            this.createStarTimer(f);
+          });
+        }
       }
     }
   }
@@ -276,9 +534,199 @@ class GameScene extends Phaser.Scene {
     this.bestTxt.setText('Melhor: ' + this.state.personalBest);
   }
 
-  // T013 — game over: red flash then transition
+  // ── Growth & shrink ─────────────────────────────────────────
+
+  // T016 — queue additional growth segments
+  growSnake(n) {
+    this.state.growthRemaining += n;
+  }
+
+  // T017 — remove up to n tail segments (never removes the head)
+  shrinkSnake(n) {
+    const remove = Math.min(n, this.state.snake.length - 1);
+    if (remove > 0) this.state.snake.splice(this.state.snake.length - remove, remove);
+  }
+
+  // ── Food effects ────────────────────────────────────────────
+
+  // T018 — last 5 tail segments become permanent obstacle tiles; score +10
+  bombEffect() {
+    const state  = this.state;
+    const remove = Math.min(5, state.snake.length - 1);
+    const tail   = state.snake.splice(state.snake.length - remove, remove);
+    for (const seg of tail) {
+      // If another food is sitting on the new obstacle cell, displace it (B1 fix)
+      const fi = state.foods.findIndex(f => f.x === seg.x && f.y === seg.y);
+      if (fi !== -1) {
+        const displaced = state.foods.splice(fi, 1)[0];
+        if (displaced.starTimer) { displaced.starTimer.remove(true); displaced.starTimer = null; }
+      }
+      state.obstacles.push({ x: seg.x, y: seg.y });
+    }
+    state.score += 10;
+    // updateHUD() is called by applyFoodEffect() after this returns
+  }
+
+  // T020 — boost tick rate 1.5× for 5 s; reset timer on re-eat
+  activateRush() {
+    const state   = this.state;
+    const boosted = Math.max(TICK_MIN, Math.floor(state.baseDelay / RUSH_SPEED_FACTOR));
+    this.restartTick(boosted);
+    if (state.rushTimerRef) state.rushTimerRef.remove(true);
+    state.rushActive   = true;
+    state.rushTimerRef = this.time.delayedCall(RUSH_BOOST_DURATION, this.rushExpired, [], this);
+  }
+
+  // T019 — restore score-adjusted base delay after boost expires; refresh STAR timers (A1 fix)
+  rushExpired() {
+    const state = this.state;
+    state.rushActive   = false;
+    state.rushTimerRef = null;
+    this.restartTick(state.baseDelay);
+    state.foods.filter(f => f.type === FOOD_TYPES.STAR).forEach(f => {
+      if (f.starTimer) f.starTimer.remove(true);
+      this.createStarTimer(f);
+    });
+  }
+
+  // T021 — dispatch per-type effect then update HUD + speed
+  applyFoodEffect(food) {
+    const state = this.state;
+    switch (food.type) {
+      case FOOD_TYPES.STANDARD: state.growthRemaining++; state.score++;    break;
+      case FOOD_TYPES.DOUBLE:   this.growSnake(2);       state.score += 2; break;
+      case FOOD_TYPES.PENTA:    this.growSnake(5);       state.score += 5; break;
+      case FOOD_TYPES.TRIM:     this.shrinkSnake(5);                       break;
+      case FOOD_TYPES.RUSH:     this.shrinkSnake(5);  this.activateRush(); break;
+      case FOOD_TYPES.STAR:     state.score += 10;                         break;
+      case FOOD_TYPES.BOMB:     this.bombEffect();                         break;
+    }
+    this.updateHUD();
+    this.updateSpeed();
+  }
+
+  // ── FOOD-STAR autonomous movement ───────────────────────────
+
+  // T022 — cancel every active STAR timer (called on game-over/win/destroy)
+  cancelAllStarTimers() {
+    for (const food of this.state.foods) {
+      if (food.starTimer) { food.starTimer.remove(true); food.starTimer = null; }
+    }
+  }
+
+  // T024 — create a looping timer driving STAR movement at 2× the snake's tick delay
+  createStarTimer(food) {
+    const dirs   = Object.values(DIRS);
+    food.gen     = this.state.tickGen;
+    food.starDir = dirs[Math.floor(Math.random() * dirs.length)];
+    food.visible = true;
+    food.starTimer = this.time.addEvent({
+      delay:    this.state.baseDelay * STAR_SPEED_FACTOR,
+      callback: () => this.moveStar(food, food.gen),
+      loop:     true
+    });
+  }
+
+  // T023 — move STAR one cell; blink toggle; teleport if all directions blocked
+  moveStar(food, capturedGen) {
+    if (capturedGen !== this.state.tickGen) return;  // stale gen-guard
+    const state = this.state;
+
+    // Blink toggle (T034)
+    food.visible = !food.visible;
+
+    // Candidate directions: current first, then 3 others shuffled
+    const others = Object.values(DIRS).filter(d => d !== food.starDir);
+    for (let i = others.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [others[i], others[j]] = [others[j], others[i]];
+    }
+    const candidates = [food.starDir, ...others];
+
+    for (const dir of candidates) {
+      const nx = food.x + dir.x;
+      const ny = food.y + dir.y;
+      if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) continue;
+      if (state.snake.some(s => s.x === nx && s.y === ny))     continue;
+      if (state.obstacles.some(o => o.x === nx && o.y === ny)) continue;
+      if (state.foods.some(f => f !== food && f.x === nx && f.y === ny)) continue;
+      food.starDir = dir;
+      food.x = nx;
+      food.y = ny;
+      this.redraw();
+      return;
+    }
+
+    // All 4 directions blocked → teleport to a random free cell
+    const free = this.cardManager.getFreeCells();
+    if (free.length > 0) {
+      const cell = free[Math.floor(Math.random() * free.length)];
+      food.x = cell.x;
+      food.y = cell.y;
+    }
+    this.redraw();
+  }
+
+  // ── Card strip HUD ──────────────────────────────────────────
+
+  // T028 — redraw the 32 px strip below the grid showing remaining foods
+  updateCardStrip() {
+    this.cardStripGfx.clear();
+    this.cardStripTexts.forEach(t => t.destroy());
+    this.cardStripTexts = [];
+
+    const stripY = HUD_H + ROWS * CELL;
+
+    // Background
+    this.cardStripGfx.fillStyle(C_HUD_BG, 1);
+    this.cardStripGfx.fillRect(0, stripY, CANVAS_W, CARD_STRIP_H);
+
+    if (!this.cardManager || !this.cardManager.activeCard) return;
+
+    // Count remaining foods by type from live state.foods (A2 fix: NOT from activeCard.slots)
+    const counts = new Map();
+    for (const food of this.state.foods) {
+      counts.set(food.type, (counts.get(food.type) || 0) + 1);
+    }
+    if (counts.size === 0) return;
+
+    let x = 8;
+    const textY = stripY + CARD_STRIP_H / 2;
+
+    for (const [type, count] of counts) {
+      // Mini colored square icon (12×12)
+      this.cardStripGfx.fillStyle(FOOD_COLORS[type], 1);
+      this.cardStripGfx.fillRect(x, stripY + 4, 12, 12);
+
+      // Count label — 18 px minimum (C1 fix: was 14 px, violates constitution Principle III)
+      const txt = this.add.text(x + 16, textY, '\u00D7' + count, {
+        fontFamily: 'Arial',
+        fontSize:   '18px',
+        color:      '#ffffff'
+      }).setOrigin(0, 0.5);
+      this.cardStripTexts.push(txt);
+
+      x += 48;
+    }
+  }
+
+  // ── Lifecycle ───────────────────────────────────────────────
+
+  // Shared cleanup for both gameOver and gameWon (T029/T030)
+  _cleanupRound() {
+    this.cancelAllStarTimers();
+    const state = this.state;
+    if (state.rushTimerRef) { state.rushTimerRef.remove(true); state.rushTimerRef = null; }
+    if (this.cardManager)   { this.cardManager.destroy(); this.cardManager = null; }
+    this.cardStripTexts.forEach(t => t.destroy());
+    this.cardStripTexts = [];
+    this.cardStripGfx.clear();
+  }
+
+  // T029 — game over: cleanup timers/managers, red flash, transition
   gameOver() {
     this.state.tickRef.remove(false);
+    this._cleanupRound();
     const overlay = this.add.rectangle(CANVAS_W / 2, CANVAS_H / 2, CANVAS_W, CANVAS_H, 0xff0000, 0);
     this.tweens.add({
       targets:  overlay,
@@ -289,15 +737,16 @@ class GameScene extends Phaser.Scene {
     this.time.delayedCall(850, () => {
       this.scene.start('GameOverScene', {
         score:        this.state.score,
-        personalBest: Math.max(this.state.score, this.state.personalBest),  // T018
+        personalBest: Math.max(this.state.score, this.state.personalBest),
         won:          false
       });
     });
   }
 
-  // T014 — win: gold flash then transition
+  // T030 — win: cleanup timers/managers, gold flash, transition
   gameWon() {
     this.state.tickRef.remove(false);
+    this._cleanupRound();
     const overlay = this.add.rectangle(CANVAS_W / 2, CANVAS_H / 2, CANVAS_W, CANVAS_H, 0xffd700, 0);
     this.tweens.add({
       targets:  overlay,
@@ -308,7 +757,7 @@ class GameScene extends Phaser.Scene {
     this.time.delayedCall(850, () => {
       this.scene.start('GameOverScene', {
         score:        this.state.score,
-        personalBest: Math.max(this.state.score, this.state.personalBest),  // T018
+        personalBest: Math.max(this.state.score, this.state.personalBest),
         won:          true
       });
     });
@@ -316,7 +765,7 @@ class GameScene extends Phaser.Scene {
 }
 
 // ============================================================
-// T015 + T019 — GAME OVER SCENE (US1 + US2)
+// GAME OVER SCENE
 // ============================================================
 class GameOverScene extends Phaser.Scene {
   constructor() {
@@ -474,4 +923,15 @@ const config = {
   scene:           [MenuScene, GameScene, GameOverScene]
 };
 
-new Phaser.Game(config);
+const game = new Phaser.Game(config);
+
+// T031 — US3: DevTools accessor for telemetry inspection
+// Usage: window.debugCardManager() in browser console
+game.events.on('ready', () => {
+  window.debugCardManager = () => {
+    const gs = game.scene.getScene('GameScene');
+    return gs && gs.cardManager
+      ? { telemetry: gs.cardManager.telemetry, queue: gs.cardManager.queue.length, activeCard: gs.cardManager.activeCard }
+      : null;
+  };
+});
