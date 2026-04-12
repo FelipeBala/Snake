@@ -188,9 +188,24 @@ function _weightedPick(weightMap) {
   return Object.keys(weightMap)[0];
 }
 
+// ============================================================
+// SPECIAL FOODS PREFERENCE (localStorage)
+// ============================================================
+function isSpecialFoodsEnabled() {
+  try { return localStorage.getItem('snakeSpecialFoodsEnabled') !== 'false'; }
+  catch (e) { return true; }
+}
+
+function setSpecialFoodsEnabled(enabled) {
+  try { localStorage.setItem('snakeSpecialFoodsEnabled', String(enabled)); }
+  catch (e) { /* best-effort; ignore storage errors */ }
+}
+
 // Server-integration seam: swap this function to use a real server response.
 // telemetry: TelemetryRecord[] — last ≤10 consumed cards (currently unused locally).
 function fetchNextCard(telemetry) {
+  if (!isSpecialFoodsEnabled()) return { slots: [FOOD_TYPES.STANDARD] };
+
   // Pick card size via CARD_SIZE_WEIGHTS cumulative wheel
   const sizeTotal = CARD_SIZE_WEIGHTS.reduce((a, b) => a + b.w, 0);
   let sizeRoll = Math.random() * sizeTotal;
@@ -930,28 +945,32 @@ class LegendScene extends Phaser.Scene {
       { type: 'OBSTACLE', nome: 'Obst\u00e1culo', desc: 'Criado pela Bomba. Colis\u00e3o termina o jogo.' }
     ];
 
-    const gfx = this.add.graphics();
+    const sepGfx = this.add.graphics();  // separators always full opacity
     const ROW_H   = 64;
     const Y_START = 40;
+    const specialEnabled = isSpecialFoodsEnabled();
 
     entries.forEach((entry, i) => {
       const rowTop = Y_START + i * ROW_H;
       const cx     = 40;
       const cy     = rowTop + 32;
 
+      // Per-row icon graphics (allows per-row alpha)
+      const iconGfx = this.add.graphics();
+
       // Icon
       if (entry.type === 'OBSTACLE') {
-        gfx.fillStyle(C_OBSTACLE, 1);
-        gfx.fillRect(cx - 14, cy - 14, 28, 28);
-        gfx.lineStyle(2, 0x263238, 1);
-        gfx.lineBetween(cx - 10, cy - 10, cx + 10, cy + 10);
-        gfx.lineBetween(cx + 10, cy - 10, cx - 10, cy + 10);
+        iconGfx.fillStyle(C_OBSTACLE, 1);
+        iconGfx.fillRect(cx - 14, cy - 14, 28, 28);
+        iconGfx.lineStyle(2, 0x263238, 1);
+        iconGfx.lineBetween(cx - 10, cy - 10, cx + 10, cy + 10);
+        iconGfx.lineBetween(cx + 10, cy - 10, cx - 10, cy + 10);
       } else {
-        drawFoodShape(gfx, { type: entry.type, visible: true }, cx, cy);
+        drawFoodShape(iconGfx, { type: entry.type, visible: true }, cx, cy);
       }
 
       // Name
-      this.add.text(72, rowTop + 8, entry.nome, {
+      const nameText = this.add.text(72, rowTop + 8, entry.nome, {
         fontFamily: '"Trebuchet MS", Arial',
         fontSize:   '22px',
         fontStyle:  'bold',
@@ -959,7 +978,7 @@ class LegendScene extends Phaser.Scene {
       });
 
       // Description
-      this.add.text(72, rowTop + 34, entry.desc, {
+      const descText = this.add.text(72, rowTop + 34, entry.desc, {
         fontFamily: '"Trebuchet MS", Arial',
         fontSize:   '18px',
         color:      '#cccccc'
@@ -967,9 +986,25 @@ class LegendScene extends Phaser.Scene {
 
       // Separator (skip after last row)
       if (i < entries.length - 1) {
-        gfx.lineStyle(1, 0x263238, 0.5);
-        gfx.lineBetween(0, rowTop + ROW_H - 1, CANVAS_W, rowTop + ROW_H - 1);
+        sepGfx.lineStyle(1, 0x263238, 0.5);
+        sepGfx.lineBetween(0, rowTop + ROW_H - 1, CANVAS_W, rowTop + ROW_H - 1);
       }
+
+      // Dim non-STANDARD entries (including OBSTACLE) when special foods are disabled
+      if (!specialEnabled && entry.type !== 'STANDARD') {
+        iconGfx.setAlpha(0.35);
+        nameText.setAlpha(0.35);
+        descText.setAlpha(0.35);
+      }
+    });
+
+    // Toggle button — disable / re-enable special foods
+    const toggleLabel = specialEnabled ? 'Desativar Especiais' : 'Ativar Especiais';
+    const toggleColor = specialEnabled ? 0xe53935 : 0x43a047;
+    const toggleBtn = makeButton(this, CANVAS_W / 2, 470, toggleLabel, toggleColor, '#ffffff', 240, 52);
+    toggleBtn.gfx.on('pointerup', () => {
+      setSpecialFoodsEnabled(!specialEnabled);
+      this.scene.restart();
     });
 
     // Jogar button — starts the game
