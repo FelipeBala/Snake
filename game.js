@@ -30,22 +30,22 @@ const C_OBSTACLE   = 0x455a64;
 
 // Food type keys
 const FOOD_TYPES = {
-  STANDARD: 'STANDARD', DOUBLE: 'DOUBLE', PENTA: 'PENTA',
-  TRIM: 'TRIM', RUSH: 'RUSH', STAR: 'STAR', BOMB: 'BOMB'
+  STANDARD: 'STANDARD', PENTA: 'PENTA',
+  RUSH: 'RUSH', STAR: 'STAR', BOMB: 'BOMB'
 };
 
 // Colors per food type
 const FOOD_COLORS = {
-  STANDARD: 0xffeb3b, DOUBLE: 0x00bcd4, PENTA: 0xffc400,
-  TRIM: 0xff6d00, RUSH: 0xaa00ff, STAR: 0xffffff, BOMB: 0xb71c1c
+  STANDARD: 0xffeb3b, PENTA: 0xffc400,
+  RUSH: 0xaa00ff, STAR: 0xffffff, BOMB: 0xb71c1c
 };
 
 // Card generation weights
 const RARITY_WEIGHTS = {
-  STANDARD: 70, DOUBLE: 12, TRIM: 7, RUSH: 6, STAR: 3, PENTA: 1, BOMB: 1
+  STANDARD: 80, RUSH: 7, STAR: 1, PENTA: 9, BOMB: 3
 };
 const CARD_SIZE_WEIGHTS = [
-  { size: 1, w: 70 }, { size: 2, w: 18 }, { size: 3, w: 9 }, { size: 4, w: 3 }
+  { size: 1, w: 84 }, { size: 2, w: 12 }, { size: 3, w: 3 }, { size: 4, w: 1 }
 ];
 
 // ============================================================
@@ -120,15 +120,6 @@ function drawFoodShape(gfx, food, cx, cy) {
     case FOOD_TYPES.STANDARD:
       gfx.fillRoundedRect(cx - 11, cy - 11, 22, 22, 5);
       break;
-    case FOOD_TYPES.DOUBLE: {
-      // 4-point diamond
-      const pts = [
-        { x: cx, y: cy - 12 }, { x: cx + 12, y: cy },
-        { x: cx, y: cy + 12 }, { x: cx - 12, y: cy }
-      ];
-      gfx.fillPoints(pts, true, true);
-      break;
-    }
     case FOOD_TYPES.PENTA: {
       // 5-point star — 10 vertices, alternating r_outer=12 / r_inner=6
       const pts = [];
@@ -140,13 +131,9 @@ function drawFoodShape(gfx, food, cx, cy) {
       gfx.fillPoints(pts, true, true);
       break;
     }
-    case FOOD_TYPES.TRIM:
-      // Wide flat pill
-      gfx.fillRoundedRect(cx - 12, cy - 5, 24, 10, 5);
-      break;
     case FOOD_TYPES.RUSH:
-      // Upward-pointing triangle
-      gfx.fillTriangle(cx, cy - 12, cx + 10, cy + 8, cx - 10, cy + 8);
+      // Wide flat pill (icon from former TRIM)
+      gfx.fillRoundedRect(cx - 12, cy - 5, 24, 10, 5);
       break;
     case FOOD_TYPES.STAR: {
       // 4-point star — 8 vertices, r_outer=11 / r_inner=5
@@ -594,9 +581,7 @@ class GameScene extends Phaser.Scene {
     const state = this.state;
     switch (food.type) {
       case FOOD_TYPES.STANDARD: state.growthRemaining++; state.score++;    break;
-      case FOOD_TYPES.DOUBLE:   this.growSnake(2);       state.score += 2; break;
       case FOOD_TYPES.PENTA:    this.growSnake(5);       state.score += 5; break;
-      case FOOD_TYPES.TRIM:     this.shrinkSnake(5);                       break;
       case FOOD_TYPES.RUSH:     this.shrinkSnake(5);  this.activateRush(); break;
       case FOOD_TYPES.STAR:     state.score += 10;                         break;
       case FOOD_TYPES.BOMB:     this.bombEffect();                         break;
@@ -831,7 +816,7 @@ class GameOverScene extends Phaser.Scene {
     const restart = () => {
       if (going) return;
       going = true;
-      this.scene.start('GameScene', { personalBest: data.personalBest });  // T018
+      this.scene.start('LegendScene', { personalBest: data.personalBest });  // T018 — show legend before restarting
     };
 
     btn.gfx.on('pointerup', restart);
@@ -890,7 +875,7 @@ class MenuScene extends Phaser.Scene {
     const startGame = () => {
       if (going) return;
       going = true;
-      this.scene.start('GameScene', { personalBest: this.personalBest });
+      this.scene.start('LegendScene', { personalBest: this.personalBest });
     };
 
     btn.gfx.on('pointerup', startGame);
@@ -912,6 +897,99 @@ class MenuScene extends Phaser.Scene {
 }
 
 // ============================================================
+// FEATURE 003 — LEGEND SCREEN
+// ============================================================
+class LegendScene extends Phaser.Scene {
+  constructor() {
+    super('LegendScene');
+  }
+
+  create(data) {
+    this.personalBest = data?.personalBest ?? 0;
+
+    // Background
+    const bg = this.add.graphics();
+    bg.fillStyle(C_BG, 1);
+    bg.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+    // Title
+    this.add.text(CANVAS_W / 2, 18, 'Legenda', {
+      fontFamily: '"Trebuchet MS", Arial',
+      fontSize:   '28px',
+      fontStyle:  'bold',
+      color:      '#00e676'
+    }).setOrigin(0.5);
+
+    // Entry definitions
+    const entries = [
+      { type: 'STANDARD', nome: 'Normal',  desc: 'Cresce 1 segmento e vale 1 ponto.' },
+      { type: 'PENTA',    nome: 'Penta',   desc: 'Cresce 5 segmentos e vale 5 pontos \u2014 raro!' },
+      { type: 'RUSH',     nome: 'Turbo',   desc: 'Corta 5 segmentos e acelera por 5 segundos.' },
+      { type: 'STAR',     nome: 'Estrela',   desc: 'Move-se sozinha. Vale 10 pontos. N\u00e3o cresce.' },
+      { type: 'BOMB',     nome: 'Bomba',     desc: 'Vira 5 segmentos em obst\u00e1culos. Vale 10 pontos.' },
+      { type: 'OBSTACLE', nome: 'Obst\u00e1culo', desc: 'Criado pela Bomba. Colis\u00e3o termina o jogo.' }
+    ];
+
+    const gfx = this.add.graphics();
+    const ROW_H   = 64;
+    const Y_START = 40;
+
+    entries.forEach((entry, i) => {
+      const rowTop = Y_START + i * ROW_H;
+      const cx     = 40;
+      const cy     = rowTop + 32;
+
+      // Icon
+      if (entry.type === 'OBSTACLE') {
+        gfx.fillStyle(C_OBSTACLE, 1);
+        gfx.fillRect(cx - 14, cy - 14, 28, 28);
+        gfx.lineStyle(2, 0x263238, 1);
+        gfx.lineBetween(cx - 10, cy - 10, cx + 10, cy + 10);
+        gfx.lineBetween(cx + 10, cy - 10, cx - 10, cy + 10);
+      } else {
+        drawFoodShape(gfx, { type: entry.type, visible: true }, cx, cy);
+      }
+
+      // Name
+      this.add.text(72, rowTop + 8, entry.nome, {
+        fontFamily: '"Trebuchet MS", Arial',
+        fontSize:   '22px',
+        fontStyle:  'bold',
+        color:      '#ffffff'
+      });
+
+      // Description
+      this.add.text(72, rowTop + 34, entry.desc, {
+        fontFamily: '"Trebuchet MS", Arial',
+        fontSize:   '18px',
+        color:      '#cccccc'
+      });
+
+      // Separator (skip after last row)
+      if (i < entries.length - 1) {
+        gfx.lineStyle(1, 0x263238, 0.5);
+        gfx.lineBetween(0, rowTop + ROW_H - 1, CANVAS_W, rowTop + ROW_H - 1);
+      }
+    });
+
+    // Jogar button — starts the game
+    const playBtn = makeButton(this, CANVAS_W / 2, 590, '\ud83c\udfae  JOGAR', 0x00c853, '#ffffff', 220, 56);
+    let going = false;
+    const startGame = () => {
+      if (going) return;
+      going = true;
+      this.scene.start('GameScene', { personalBest: this.personalBest });
+    };
+    playBtn.gfx.on('pointerup', startGame);
+    this.input.keyboard.on('keydown-SPACE', startGame);
+    this.input.keyboard.on('keydown-ENTER', startGame);
+
+    // Escape key — back to menu
+    this.input.keyboard.on('keydown-ESC', () => this.scene.start('MenuScene'));
+  }
+}
+
+// ============================================================
 // T024 — PHASER GAME BOOTSTRAP
 // ============================================================
 const config = {
@@ -920,7 +998,7 @@ const config = {
   height:          CANVAS_H,
   backgroundColor: '#1a1a2e',
   parent:          document.body,
-  scene:           [MenuScene, GameScene, GameOverScene]
+  scene:           [MenuScene, GameScene, GameOverScene, LegendScene]
 };
 
 const game = new Phaser.Game(config);
