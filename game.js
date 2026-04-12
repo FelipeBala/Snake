@@ -201,6 +201,16 @@ function setSpecialFoodsEnabled(enabled) {
   catch (e) { /* best-effort; ignore storage errors */ }
 }
 
+function getPersonalBest() {
+  try { return parseInt(localStorage.getItem('snakePersonalBest'), 10) || 0; }
+  catch (e) { return 0; }
+}
+
+function savePersonalBest(score) {
+  try { localStorage.setItem('snakePersonalBest', String(score)); }
+  catch (e) { /* best-effort */ }
+}
+
 // Server-integration seam: swap this function to use a real server response.
 // telemetry: TelemetryRecord[] — last ≤10 consumed cards (currently unused locally).
 function fetchNextCard(telemetry) {
@@ -349,7 +359,7 @@ class GameScene extends Phaser.Scene {
       foods:           [],
       obstacles:       [],
       score:           0,
-      personalBest:    data?.personalBest ?? 0,
+      personalBest:    data?.personalBest ?? getPersonalBest(),
       growthRemaining: 0,
       baseDelay:       TICK_BASE,
       tickDelay:       TICK_BASE,
@@ -735,9 +745,11 @@ class GameScene extends Phaser.Scene {
       yoyo:     true
     });
     this.time.delayedCall(850, () => {
+      const newBest = Math.max(this.state.score, this.state.personalBest);
+      savePersonalBest(newBest);
       this.scene.start('GameOverScene', {
         score:        this.state.score,
-        personalBest: Math.max(this.state.score, this.state.personalBest),
+        personalBest: newBest,
         won:          false
       });
     });
@@ -755,9 +767,11 @@ class GameScene extends Phaser.Scene {
       yoyo:     true
     });
     this.time.delayedCall(850, () => {
+      const newBest = Math.max(this.state.score, this.state.personalBest);
+      savePersonalBest(newBest);
       this.scene.start('GameOverScene', {
         score:        this.state.score,
-        personalBest: Math.max(this.state.score, this.state.personalBest),
+        personalBest: newBest,
         won:          true
       });
     });
@@ -849,7 +863,7 @@ class MenuScene extends Phaser.Scene {
   }
 
   create(data) {
-    this.personalBest = data?.personalBest ?? 0;
+    this.personalBest = data?.personalBest ?? getPersonalBest();
 
     // Background fill (Phaser clears to backgroundColor; explicit rect for safety)
     const bg = this.add.graphics();
@@ -920,7 +934,7 @@ class LegendScene extends Phaser.Scene {
   }
 
   create(data) {
-    this.personalBest = data?.personalBest ?? 0;
+    this.personalBest = data?.personalBest ?? getPersonalBest();
 
     // Background
     const bg = this.add.graphics();
