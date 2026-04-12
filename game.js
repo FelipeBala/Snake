@@ -809,14 +809,13 @@ class GameOverScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     // T019 — personal best
-    this.add.text(CANVAS_W / 2, CANVAS_H * 0.54, 'Melhor: ' + data.personalBest, {
+    this.add.text(CANVAS_W / 2, CANVAS_H * 0.54, '⭐ Melhor: ' + data.personalBest, {
       fontFamily: '"Trebuchet MS", Arial',
       fontSize:   '26px',
       fontStyle:  'bold',
-      color:      '#00e676'
+      color:      '#ffeb3b'
     }).setOrigin(0.5);
 
-    // T019 — new-record celebration
     if (data.score > 0 && data.score >= data.personalBest) {
       const rec = this.add.text(CANVAS_W / 2, CANVAS_H * 0.63, '🏆 Novo Recorde!', {
         fontFamily: '"Trebuchet MS", Arial',
