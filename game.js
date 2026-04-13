@@ -211,6 +211,17 @@ function savePersonalBest(score) {
   catch (e) { /* best-effort */ }
 }
 
+// --- Mute Preference (localStorage) ---
+function isMuted() {
+  try { return localStorage.getItem('snakeMuted') === 'true'; }
+  catch (e) { return false; }
+}
+
+function setMutePref(muted) {
+  try { localStorage.setItem('snakeMuted', String(muted)); }
+  catch (e) { /* best-effort; ignore storage errors */ }
+}
+
 // Server-integration seam: swap this function to use a real server response.
 // telemetry: TelemetryRecord[] — last ≤10 consumed cards (currently unused locally).
 function fetchNextCard(telemetry) {
@@ -350,6 +361,17 @@ class GameScene extends Phaser.Scene {
     super('GameScene');
   }
 
+  // T002 — load audio assets
+  preload() {
+    this.load.audio('bgm',              'audio/bgm.mp3');
+    this.load.audio('sfx_eat_standard', 'audio/sfx_eat_standard.ogg');
+    this.load.audio('sfx_eat_penta',    'audio/sfx_eat_penta.ogg');
+    this.load.audio('sfx_eat_rush',     'audio/sfx_eat_rush.ogg');
+    this.load.audio('sfx_eat_star',     'audio/sfx_eat_star.ogg');
+    this.load.audio('sfx_eat_bomb',     'audio/sfx_eat_bomb.ogg');
+    this.load.audio('sfx_collision',    'audio/sfx_collision.ogg');
+  }
+
   // T025 — scene setup
   create(data) {
     this.state = {
@@ -380,12 +402,30 @@ class GameScene extends Phaser.Scene {
       color:      '#ffffff'
     }).setOrigin(0, 0.5);
 
-    this.bestTxt = this.add.text(CANVAS_W - 12, HUD_H / 2, 'Melhor: 0', {
+    this.bestTxt = this.add.text(CANVAS_W - 100, HUD_H / 2, 'Melhor: 0', {
       fontFamily: '"Trebuchet MS", Arial',
       fontSize:   '22px',
       fontStyle:  'bold',
       color:      '#ffeb3b'
     }).setOrigin(1, 0.5);
+
+    // T003 — mute toggle button in HUD
+    const muteTxt = this.add.text(CANVAS_W - 52, HUD_H / 2, isMuted() ? '🔇' : '🔊', {
+      fontFamily: '"Trebuchet MS", Arial',
+      fontSize:   '22px',
+      color:      '#ffffff'
+    }).setOrigin(0.5)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerover', () => muteTxt.setScale(1.15))
+      .on('pointerout',  () => muteTxt.setScale(1.0))
+      .on('pointerdown', () => {
+        muteTxt.setScale(0.9);
+        const nowMuted = !isMuted();
+        setMutePref(nowMuted);
+        this.sound.setMute(nowMuted);
+        muteTxt.setText(nowMuted ? '🔇' : '🔊');
+      })
+      .on('pointerup', () => muteTxt.setScale(1.0));
 
     this.cardStripGfx   = this.add.graphics();
     this.cardStripTexts = [];
@@ -394,6 +434,25 @@ class GameScene extends Phaser.Scene {
     this.cardManager.init();  // places first card's foods, calls redraw + updateCardStrip
 
     this.updateHUD();
+
+    // T004 — init background music
+    this.music = this.sound.add('bgm', { loop: true, volume: 0.5 });
+    this.sound.setMute(isMuted());
+    this.musicStarted = false;
+
+    // T005 — handle browser autoplay policy: play on first audio unlock
+    this.sound.once('unlocked', () => {
+      if (!this.musicStarted && !isMuted()) {
+        this.music.play();
+        this.musicStarted = true;
+      }
+    });
+    // If AudioContext is already running (page reloaded after prior interaction), play immediately
+    if (this.sound.context && this.sound.context.state === 'running' && !this.musicStarted) {
+      this.music.play();
+      this.musicStarted = true;
+    }
+
     this.restartTick(TICK_BASE);
   }
 
@@ -415,6 +474,12 @@ class GameScene extends Phaser.Scene {
 
   // T026 — core game-loop tick
   tick() {
+    // T006 — start BGM on first game tick (covers Edge/Firefox autoplay edge cases)
+    if (!this.musicStarted && !isMuted()) {
+      this.music.play();
+      this.musicStarted = true;
+    }
+
     const state = this.state;
     state.dir = state.nextDir;
 
@@ -605,11 +670,11 @@ class GameScene extends Phaser.Scene {
   applyFoodEffect(food) {
     const state = this.state;
     switch (food.type) {
-      case FOOD_TYPES.STANDARD: state.growthRemaining++; state.score++;    break;
-      case FOOD_TYPES.PENTA:    this.growSnake(5);       state.score += 5; break;
-      case FOOD_TYPES.RUSH:     this.shrinkSnake(5);  this.activateRush(); break;
-      case FOOD_TYPES.STAR:     state.score += 10;                         break;
-      case FOOD_TYPES.BOMB:     this.bombEffect();                         break;
+      case FOOD_TYPES.STANDARD: state.growthRemaining++; state.score++;    this.sound.play('sfx_eat_standard', { volume: 0.7 }); break;
+      case FOOD_TYPES.PENTA:    this.growSnake(5);       state.score += 5; this.sound.play('sfx_eat_penta',    { volume: 0.8 }); break;
+      case FOOD_TYPES.RUSH:     this.shrinkSnake(5);  this.activateRush();  this.sound.play('sfx_eat_rush',     { volume: 0.8 }); break;
+      case FOOD_TYPES.STAR:     state.score += 10;                          this.sound.play('sfx_eat_star',     { volume: 0.8 }); break;
+      case FOOD_TYPES.BOMB:     this.bombEffect();                          this.sound.play('sfx_eat_bomb',     { volume: 0.9 }); break;
     }
     this.updateHUD();
     this.updateSpeed();
@@ -731,10 +796,14 @@ class GameScene extends Phaser.Scene {
     this.cardStripTexts.forEach(t => t.destroy());
     this.cardStripTexts = [];
     this.cardStripGfx.clear();
+    // T007 — stop background music when round ends
+    if (this.music && this.music.isPlaying) { this.music.stop(); this.musicStarted = false; }
   }
 
   // T029 — game over: cleanup timers/managers, red flash, transition
   gameOver() {
+    // T015 — collision sound effect
+    this.sound.play('sfx_collision', { volume: 1.0 });
     this.state.tickRef.remove(false);
     this._cleanupRound();
     const overlay = this.add.rectangle(CANVAS_W / 2, CANVAS_H / 2, CANVAS_W, CANVAS_H, 0xff0000, 0);
