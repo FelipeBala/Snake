@@ -122,6 +122,13 @@ hooks:
     prompt: Commit implementation changes?
     description: Auto-commit after implementation
     condition: null
+  - extension: fix-findings
+    command: speckit.fix-findings.run
+    enabled: true
+    optional: true
+    prompt: Run fix-findings to analyze and resolve spec findings automatically?
+    description: Post-implementation automated finding resolution
+    condition: null
   after_checklist:
   - extension: git
     command: speckit.git.commit
