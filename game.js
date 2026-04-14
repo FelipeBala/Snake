@@ -1262,7 +1262,7 @@ class LegendScene extends Phaser.Scene {
 
     // Toggle button — disable / re-enable special foods
     const toggleLabel = specialEnabled ? t('disableSpecials') : t('enableSpecials');
-    const toggleColor = specialEnabled ? 0xe53935 : 0x43a047;
+    const toggleColor = specialEnabled ? 0x757575 : 0x43a047;
     const toggleBtn = makeButton(this, CANVAS_W / 2, 490, toggleLabel, toggleColor, '#ffffff', 240, 52);
     toggleBtn.gfx.on('pointerup', () => {
       setSpecialFoodsEnabled(!specialEnabled);
