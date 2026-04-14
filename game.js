@@ -222,6 +222,17 @@ function setMutePref(muted) {
   catch (e) { /* best-effort; ignore storage errors */ }
 }
 
+// --- SFX Mute Preference (localStorage) ---
+function isSfxMuted() {
+  try { return localStorage.getItem('snakeSfxMuted') === 'true'; }
+  catch (e) { return false; }
+}
+
+function setSfxMutePref(muted) {
+  try { localStorage.setItem('snakeSfxMuted', String(muted)); }
+  catch (e) { /* best-effort; ignore storage errors */ }
+}
+
 // Server-integration seam: swap this function to use a real server response.
 // telemetry: TelemetryRecord[] — last ≤10 consumed cards (currently unused locally).
 function fetchNextCard(telemetry) {
@@ -409,23 +420,40 @@ class GameScene extends Phaser.Scene {
       color:      '#ffeb3b'
     }).setOrigin(1, 0.5);
 
-    // T003 — mute toggle button in HUD
-    const muteTxt = this.add.text(CANVAS_W - 52, HUD_H / 2, isMuted() ? '🔇' : '🔊', {
+    // BGM toggle button
+    const bgmBtn = this.add.text(CANVAS_W - 76, HUD_H / 2, isMuted() ? '🔇' : '🔊', {
       fontFamily: '"Trebuchet MS", Arial',
       fontSize:   '22px',
       color:      '#ffffff'
     }).setOrigin(0.5)
       .setInteractive({ useHandCursor: true })
-      .on('pointerover', () => muteTxt.setScale(1.15))
-      .on('pointerout',  () => muteTxt.setScale(1.0))
+      .on('pointerover', () => bgmBtn.setScale(1.15))
+      .on('pointerout',  () => bgmBtn.setScale(1.0))
       .on('pointerdown', () => {
-        muteTxt.setScale(0.9);
+        bgmBtn.setScale(0.9);
         const nowMuted = !isMuted();
         setMutePref(nowMuted);
-        this.sound.setMute(nowMuted);
-        muteTxt.setText(nowMuted ? '🔇' : '🔊');
+        this.music.setMute(nowMuted);
+        bgmBtn.setText(nowMuted ? '🔇' : '🔊');
       })
-      .on('pointerup', () => muteTxt.setScale(1.0));
+      .on('pointerup', () => bgmBtn.setScale(1.0));
+
+    // SFX toggle button
+    const sfxBtn = this.add.text(CANVAS_W - 36, HUD_H / 2, isSfxMuted() ? '🔕' : '🔔', {
+      fontFamily: '"Trebuchet MS", Arial',
+      fontSize:   '22px',
+      color:      '#ffffff'
+    }).setOrigin(0.5)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerover', () => sfxBtn.setScale(1.15))
+      .on('pointerout',  () => sfxBtn.setScale(1.0))
+      .on('pointerdown', () => {
+        sfxBtn.setScale(0.9);
+        const nowSfxMuted = !isSfxMuted();
+        setSfxMutePref(nowSfxMuted);
+        sfxBtn.setText(nowSfxMuted ? '🔕' : '🔔');
+      })
+      .on('pointerup', () => sfxBtn.setScale(1.0));
 
     this.cardStripGfx   = this.add.graphics();
     this.cardStripTexts = [];
@@ -437,7 +465,9 @@ class GameScene extends Phaser.Scene {
 
     // T004 — init background music
     this.music = this.sound.add('bgm', { loop: true, volume: 0.5 });
-    this.sound.setMute(isMuted());
+    // Persistence: isMuted() and isSfxMuted() are read from localStorage on every create() call,
+    // so both BGM and SFX preferences survive page reload automatically — no extra code needed.
+    this.music.setMute(isMuted());
     this.musicStarted = false;
 
     // T005 — handle browser autoplay policy: play on first audio unlock
@@ -670,11 +700,11 @@ class GameScene extends Phaser.Scene {
   applyFoodEffect(food) {
     const state = this.state;
     switch (food.type) {
-      case FOOD_TYPES.STANDARD: state.growthRemaining++; state.score++;    this.sound.play('sfx_eat_standard', { volume: 0.7 }); break;
-      case FOOD_TYPES.PENTA:    this.growSnake(5);       state.score += 5; this.sound.play('sfx_eat_penta',    { volume: 0.8 }); break;
-      case FOOD_TYPES.RUSH:     this.shrinkSnake(5);  this.activateRush();  this.sound.play('sfx_eat_rush',     { volume: 0.8 }); break;
-      case FOOD_TYPES.STAR:     state.score += 10;                          this.sound.play('sfx_eat_star',     { volume: 0.8 }); break;
-      case FOOD_TYPES.BOMB:     this.bombEffect();                          this.sound.play('sfx_eat_bomb',     { volume: 0.9 }); break;
+      case FOOD_TYPES.STANDARD: state.growthRemaining++; state.score++;    if (!isSfxMuted()) this.sound.play('sfx_eat_standard', { volume: 0.7 }); break;
+      case FOOD_TYPES.PENTA:    this.growSnake(5);       state.score += 5; if (!isSfxMuted()) this.sound.play('sfx_eat_penta',    { volume: 0.8 }); break;
+      case FOOD_TYPES.RUSH:     this.shrinkSnake(5);  this.activateRush();  if (!isSfxMuted()) this.sound.play('sfx_eat_rush',     { volume: 0.8 }); break;
+      case FOOD_TYPES.STAR:     state.score += 10;                          if (!isSfxMuted()) this.sound.play('sfx_eat_star',     { volume: 0.8 }); break;
+      case FOOD_TYPES.BOMB:     this.bombEffect();                          if (!isSfxMuted()) this.sound.play('sfx_eat_bomb',     { volume: 0.9 }); break;
     }
     this.updateHUD();
     this.updateSpeed();
@@ -802,8 +832,8 @@ class GameScene extends Phaser.Scene {
 
   // T029 — game over: cleanup timers/managers, red flash, transition
   gameOver() {
-    // T015 — collision sound effect
-    this.sound.play('sfx_collision', { volume: 1.0 });
+    // T015 — collision sound effect (respects SFX mute preference)
+    if (!isSfxMuted()) this.sound.play('sfx_collision', { volume: 1.0 });
     this.state.tickRef.remove(false);
     this._cleanupRound();
     const overlay = this.add.rectangle(CANVAS_W / 2, CANVAS_H / 2, CANVAS_W, CANVAS_H, 0xff0000, 0);
@@ -1016,6 +1046,41 @@ class LegendScene extends Phaser.Scene {
       fontStyle:  'bold',
       color:      '#00e676'
     }).setOrigin(0.5);
+
+    // BGM toggle button (top-right, same row as title)
+    // NOTE: works because scene.start() stops GameScene; update to call music API if scene.launch() is ever used.
+    const lgBgmBtn = this.add.text(CANVAS_W - 76, 18, isMuted() ? '🔇' : '🔊', {
+      fontFamily: '"Trebuchet MS", Arial',
+      fontSize:   '22px',
+      color:      '#ffffff'
+    }).setOrigin(0.5)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerover', () => lgBgmBtn.setScale(1.15))
+      .on('pointerout',  () => lgBgmBtn.setScale(1.0))
+      .on('pointerdown', () => {
+        lgBgmBtn.setScale(0.9);
+        const nowMuted = !isMuted();
+        setMutePref(nowMuted);
+        lgBgmBtn.setText(nowMuted ? '🔇' : '🔊');
+      })
+      .on('pointerup', () => lgBgmBtn.setScale(1.0));
+
+    // SFX toggle button (top-right, same row as title)
+    const lgSfxBtn = this.add.text(CANVAS_W - 36, 18, isSfxMuted() ? '🔕' : '🔔', {
+      fontFamily: '"Trebuchet MS", Arial',
+      fontSize:   '22px',
+      color:      '#ffffff'
+    }).setOrigin(0.5)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerover', () => lgSfxBtn.setScale(1.15))
+      .on('pointerout',  () => lgSfxBtn.setScale(1.0))
+      .on('pointerdown', () => {
+        lgSfxBtn.setScale(0.9);
+        const nowSfxMuted = !isSfxMuted();
+        setSfxMutePref(nowSfxMuted);
+        lgSfxBtn.setText(nowSfxMuted ? '🔕' : '🔔');
+      })
+      .on('pointerup', () => lgSfxBtn.setScale(1.0));
 
     // Entry definitions
     const entries = [
