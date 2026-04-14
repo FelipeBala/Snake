@@ -1195,16 +1195,20 @@ class LegendScene extends Phaser.Scene {
 // ============================================================
 // T024 — PHASER GAME BOOTSTRAP
 // ============================================================
+const isMobile = window.matchMedia('(pointer: coarse)').matches;
+
 const config = {
   type:            Phaser.AUTO,
   width:           CANVAS_W,
   height:          CANVAS_H,
   backgroundColor: '#1a1a2e',
   parent:          document.body,
-  scale: {
-    mode:       Phaser.Scale.FIT,
-    autoCenter: Phaser.Scale.CENTER_BOTH
-  },
+  ...(isMobile ? {
+    scale: {
+      mode:       Phaser.Scale.FIT,
+      autoCenter: Phaser.Scale.CENTER_BOTH
+    }
+  } : {}),
   scene:           [MenuScene, GameScene, GameOverScene, LegendScene]
 };
 
