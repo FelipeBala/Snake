@@ -1154,16 +1154,16 @@ class LegendScene extends Phaser.Scene {
     bg.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
     // Title
-    this.add.text(CANVAS_W / 2, 18, t('legendTitle'), {
+    this.add.text(20, 32, t('legendTitle'), {
       fontFamily: '"Trebuchet MS", Arial',
       fontSize:   '28px',
       fontStyle:  'bold',
       color:      '#00e676'
-    }).setOrigin(0.5);
+    }).setOrigin(0, 0.5);
 
     // BGM toggle button (top-right, same row as title)
     // NOTE: works because scene.start() stops GameScene; update to call music API if scene.launch() is ever used.
-    const lgBgmBtn = this.add.text(CANVAS_W - 76, 18, isMuted() ? '🔇' : '🔊', {
+    const lgBgmBtn = this.add.text(CANVAS_W - 76, 32, isMuted() ? '🔇' : '🔊', {
       fontFamily: '"Trebuchet MS", Arial',
       fontSize:   '22px',
       color:      '#ffffff'
@@ -1180,7 +1180,7 @@ class LegendScene extends Phaser.Scene {
       .on('pointerup', () => lgBgmBtn.setScale(1.0));
 
     // SFX toggle button (top-right, same row as title)
-    const lgSfxBtn = this.add.text(CANVAS_W - 36, 18, isSfxMuted() ? '🔕' : '🔔', {
+    const lgSfxBtn = this.add.text(CANVAS_W - 36, 32, isSfxMuted() ? '🔕' : '🔔', {
       fontFamily: '"Trebuchet MS", Arial',
       fontSize:   '22px',
       color:      '#ffffff'
@@ -1209,7 +1209,7 @@ class LegendScene extends Phaser.Scene {
 
     const sepGfx = this.add.graphics();  // separators always full opacity
     const ROW_H   = 64;
-    const Y_START = 40;
+    const Y_START = 58;
     const specialEnabled = isSpecialFoodsEnabled();
 
     entries.forEach((entry, i) => {
@@ -1263,19 +1263,13 @@ class LegendScene extends Phaser.Scene {
     // Toggle button — disable / re-enable special foods
     const toggleLabel = specialEnabled ? t('disableSpecials') : t('enableSpecials');
     const toggleColor = specialEnabled ? 0xe53935 : 0x43a047;
-    const toggleBtn = makeButton(this, CANVAS_W / 2, 470, toggleLabel, toggleColor, '#ffffff', 240, 52);
+    const toggleBtn = makeButton(this, CANVAS_W / 2, 490, toggleLabel, toggleColor, '#ffffff', 240, 52);
     toggleBtn.gfx.on('pointerup', () => {
       setSpecialFoodsEnabled(!specialEnabled);
       this.scene.restart();
     });
 
-    // Language selector
-    this.add.text(CANVAS_W / 2, 510, t('language'), {
-      fontFamily: '"Trebuchet MS", Arial',
-      fontSize:   '14px',
-      color:      '#888888'
-    }).setOrigin(0.5);
-
+    // Language selector — top-right, left of audio buttons
     const _curLang = getLang();
     const _langOpts = [
       { code: 'pt', label: 'Portugu\u00eas' },
@@ -1283,8 +1277,8 @@ class LegendScene extends Phaser.Scene {
       { code: 'es', label: 'Espa\u00f1ol' }
     ].map(l => `<option value="${l.code}"${l.code === _curLang ? ' selected' : ''}>${l.label}</option>`).join('');
 
-    const _langSel = this.add.dom(CANVAS_W / 2, 534).createFromHTML(
-      `<select style="background:#0f3460;color:#fff;border:1px solid #00e676;border-radius:8px;padding:5px 10px;font-size:15px;font-family:'Trebuchet MS',Arial,sans-serif;cursor:pointer;outline:none;min-width:150px;">${_langOpts}</select>`
+    const _langSel = this.add.dom(CANVAS_W - 165, 32).createFromHTML(
+      `<select style="background:#0f3460;color:#fff;border:1px solid #00e676;border-radius:6px;padding:2px 6px;font-size:13px;font-family:'Trebuchet MS',Arial,sans-serif;cursor:pointer;outline:none;min-width:110px;">${_langOpts}</select>`
     );
     _langSel.addListener('change');
     _langSel.on('change', (evt) => {
@@ -1293,7 +1287,7 @@ class LegendScene extends Phaser.Scene {
     });
 
     // Jogar button — starts the game
-    const playBtn = makeButton(this, CANVAS_W / 2, 590, t('play'), 0x00c853, '#ffffff', 220, 56);
+    const playBtn = makeButton(this, CANVAS_W / 2, 570, t('play'), 0x00c853, '#ffffff', 220, 56);
     let going = false;
     const startGame = () => {
       if (going) return;
