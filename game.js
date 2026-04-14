@@ -876,16 +876,28 @@ class GameScene extends Phaser.Scene {
     });
 
     // Snake body (all segments except head)
-    gfx.fillStyle(C_SNAKE_BODY, 1);
-    for (let i = 1; i < state.snake.length; i++) {
-      const s = state.snake[i];
-      gfx.fillRoundedRect(s.x * CELL + 2, HUD_H + s.y * CELL + 2, CELL - 4, CELL - 4, 4);
+    if (state.rushActive) {
+      const pulse = 0.7 + 0.3 * Math.abs(Math.sin(this.time.now / 160));
+      gfx.fillStyle(0xaa00ff, pulse);
+      for (let i = 1; i < state.snake.length; i++) {
+        const s = state.snake[i];
+        gfx.fillRoundedRect(s.x * CELL + 2, HUD_H + s.y * CELL + 2, CELL - 4, CELL - 4, 4);
+      }
+      // Snake head (rushed)
+      const head = state.snake[0];
+      gfx.fillStyle(0xcc44ff, 1);
+      gfx.fillRoundedRect(head.x * CELL + 1, HUD_H + head.y * CELL + 1, CELL - 2, CELL - 2, 6);
+    } else {
+      gfx.fillStyle(C_SNAKE_BODY, 1);
+      for (let i = 1; i < state.snake.length; i++) {
+        const s = state.snake[i];
+        gfx.fillRoundedRect(s.x * CELL + 2, HUD_H + s.y * CELL + 2, CELL - 4, CELL - 4, 4);
+      }
+      // Snake head (normal)
+      const head = state.snake[0];
+      gfx.fillStyle(C_SNAKE_HEAD, 1);
+      gfx.fillRoundedRect(head.x * CELL + 1, HUD_H + head.y * CELL + 1, CELL - 2, CELL - 2, 6);
     }
-
-    // Snake head
-    const head = state.snake[0];
-    gfx.fillStyle(C_SNAKE_HEAD, 1);
-    gfx.fillRoundedRect(head.x * CELL + 1, HUD_H + head.y * CELL + 1, CELL - 2, CELL - 2, 6);
   }
 
   // T015 — restart the tick timer at a new delay, incrementing tickGen
@@ -933,7 +945,31 @@ class GameScene extends Phaser.Scene {
   // T017 — remove up to n tail segments (never removes the head)
   shrinkSnake(n) {
     const remove = Math.min(n, this.state.snake.length - 1);
-    if (remove > 0) this.state.snake.splice(this.state.snake.length - remove, remove);
+    if (remove > 0) {
+      const removed = this.state.snake.splice(this.state.snake.length - remove, remove);
+      this.spawnGhosts(removed);
+    }
+  }
+
+  // 007 — spawn fading ghost rectangles at positions of removed segments
+  spawnGhosts(segments) {
+    for (const { x, y } of segments) {
+      const rect = this.add.rectangle(
+        x * CELL + CELL / 2,
+        HUD_H + y * CELL + CELL / 2,
+        CELL - 4,
+        CELL - 4,
+        C_SNAKE_BODY
+      );
+      rect.setDepth(1);
+      this.tweens.add({
+        targets:    rect,
+        alpha:      0,
+        duration:   500,
+        ease:       'Sine.Out',
+        onComplete: () => rect.destroy()
+      });
+    }
   }
 
   // ── Food effects ────────────────────────────────────────────
