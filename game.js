@@ -1263,7 +1263,7 @@ class LegendScene extends Phaser.Scene {
     // Toggle button — disable / re-enable special foods
     const toggleLabel = specialEnabled ? t('disableSpecials') : t('enableSpecials');
     const toggleColor = specialEnabled ? 0x757575 : 0x43a047;
-    const toggleBtn = makeButton(this, CANVAS_W / 2, 490, toggleLabel, toggleColor, '#ffffff', 240, 52);
+    const toggleBtn = makeButton(this, CANVAS_W / 2, 490, toggleLabel, toggleColor, '#ffffff', 280, 52);
     toggleBtn.gfx.on('pointerup', () => {
       setSpecialFoodsEnabled(!specialEnabled);
       this.scene.restart();
@@ -1287,7 +1287,7 @@ class LegendScene extends Phaser.Scene {
     });
 
     // Jogar button — starts the game
-    const playBtn = makeButton(this, CANVAS_W / 2, 570, t('play'), 0x00c853, '#ffffff', 220, 56);
+    const playBtn = makeButton(this, CANVAS_W / 2, 570, t('play'), 0x00c853, '#ffffff', 280, 56);
     let going = false;
     const startGame = () => {
       if (going) return;
