@@ -1,21 +1,110 @@
 # Specification Analysis Report: Feature 006 — Individual BGM & SFX Audio Controls
 
-**Feature**: `006-audio-controls-screens`  
-**Date**: 2026-04-12  
-**Artifacts Analyzed**: `spec.md`, `plan.md`, `data-model.md`, `research.md`, `tasks.md`, `game.js`  
-**Constitution Checked**: `.specify/memory/constitution.md` v1.0.0  
+**Feature**: `006-audio-controls-screens`
+**Date**: 2026-04-14
+**Artifacts Analyzed**: `spec.md`, `plan.md`, `data-model.md`, `research.md`, `tasks.md`, `game.js`
+**Iteration**: 3 (post-implementation)
 
 ---
 
-## Findings Table
+## 1. Tasks Completion Status
 
-| ID  | Category              | Severity | Location(s)                                   | Summary                                                                                                                                                               | Recommendation                                                                                                                                         |
-|-----|-----------------------|----------|-----------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------|
-| C1  | Constitution          | CRITICAL | spec.md Assumptions, plan.md §Constitution Check, research.md Q6 | Constitution Principle III ("Child-Friendly UX") is explicitly **NON-NEGOTIABLE** and mandates buttons ≥ 48×48 px with a clear text label. All four new buttons are emoji-only at 22 px font with no text label and no accessible tap target. Plan/research label this an "accepted deviation per feature 005 precedent," but the constitution does not permit informal precedent overrides of NON-NEGOTIABLE principles. | Either (a) amend the constitution via the governance process to carve out supplemental HUD audio controls, or (b) redesign buttons to include a visible text label and meet the 48×48 px minimum. A silent deviation does not satisfy a NON-NEGOTIABLE principle. |
-| C2  | Constitution          | CRITICAL | constitution.md §Design Standards, tasks.md T001–T006, T008–T009 | Design Standards state "All interactive elements MUST be keyboard-focusable." Phaser `text` objects with `.setInteractive()` are **mouse/pointer only** — they are unreachable by `Tab` or keyboard navigation. No task addresses keyboard accessibility for the four new buttons. Same pre-existing gap on `muteTxt` (feature 005) now expands to four elements. | Add a task to wire `pointerdown`-equivalent keyboard logic (e.g., Phaser `key.on('down', ...)`) or acknowledge and amend the constitution as part of a formal accessibility decision. |
-| H1  | Implementation Defect | HIGH     | tasks.md T001                                 | T001 describes inserting the new helpers "after the existing `setSfxMutePref` function block." `setSfxMutePref` **does not yet exist** — it is the function being created by T001. The correct anchor is the existing `setMutePref()` function (game.js line 220). An implementor following the task description exactly will search for a non-existent symbol and have no reliable insertion point. | Fix T001 wording to read: "after the existing `setMutePref()` function block (game.js ~line 220, key `snakeMuted`)." |
-| H2  | Implementation Defect | HIGH     | plan.md Change 2 (SFX button pointerdown)     | The `sfxBtn` `pointerdown` handler calls `setSfxMutePref(!isSfxMuted())` and then immediately reads `isSfxMuted()` again to set the icon text. If the `setSfxMutePref` write fails silently (the `catch (e) {}` swallows errors), the second read returns the **old** value, leaving the button icon in the wrong (pre-toggle) state — a silent icon desync on storage failure. The same pattern exists in the LegendScene SFX button. | Capture the new state in a local variable before the two locale operations: `const newMuted = !isSfxMuted(); setSfxMutePref(newMuted); sfxBtn.setText(newMuted ? '🔕' : '🔔');` — eliminates the double-read risk entirely. Matches the `bgmBtn` pattern which already uses `const nowMuted = !isMuted()`. |
-| H3  | Plan–Spec Alignment   | HIGH     | plan.md Change 6, spec.md FR-010, US2 AC-3    | The plan states LegendScene buttons "write to localStorage only — no interaction with any Phaser sound object." This is architecturally correct per research Q2, but the spec's FR-010 says changes "MUST be immediately reflected on the Game screen when the player navigates back." The implementation only applies preferences on the **next** `GameScene.create()` call. The phrase "immediately" in FR-010 is ambiguous: it could be read as "without a full page reload" (satisfied) or as "real-time sync across active scenes" (not satisfied, and architecturally impossible without `scene.launch()`). No task documents or tests the "navigate back → verify state" path explicitly. | Clarify FR-010 wording to read "reflected when the player returns to the Game screen (i.e., on the next `GameScene.create()` call, without requiring a page reload)." Add this as an explicit acceptance check in T006 or T009. |
+| Task | Marked | Code Evidence | Actual Status |
+|------|--------|---------------|---------------|
+| T001 — Add `isSfxMuted()` / `setSfxMutePref()` | ✅ | Lines 226–234: both helpers with try/catch fail-open | ✅ CONFIRMED |
+| T002 — `this.sound.setMute()` → `this.music.setMute()` | ✅ | Line 480: init; Line 436: handler | ✅ CONFIRMED |
+| T003 — `bgmBtn` + `sfxBtn` in `GameScene` | ✅ | Lines 424–461: two buttons, correct x positions | ✅ CONFIRMED |
+| T004 — `if (!isSfxMuted())` on 5 `sfx_eat_*` calls | ✅ | Lines 722–726: all 5 food types guarded | ✅ CONFIRMED |
+| T005 — `if (!isSfxMuted())` on `sfx_collision` | ✅ | Line 855: guard present | ✅ CONFIRMED |
+| T006 — `lgBgmBtn` + `lgSfxBtn` in `LegendScene` | ✅ | Lines 1075–1107: both buttons, localStorage-only | ✅ CONFIRMED |
+| T007 — Confirm persistence comment | ✅ | Lines 478–480: comment present | ✅ CONFIRMED |
+| T008 — Manual HUD layout visual verification | ⬜ | Manual browser check required | ⏳ PENDING |
+| T009 — Manual smoke test | ⬜ | Manual browser check required | ⏳ PENDING |
+
+**7/9 tasks implemented and confirmed. 2 pending = manual-only verification.**
+
+---
+
+## 2. Requirements Coverage
+
+| Requirement | Status | Implementation Notes |
+|-------------|--------|----------------------|
+| FR-001: GameScene — two buttons top-right | ✅ | `bgmBtn` at `CANVAS_W-76`, `sfxBtn` at `CANVAS_W-36`, `y = HUD_H/2` |
+| FR-002: LegendScene — two buttons, same style | ✅ | `lgBgmBtn` + `lgSfxBtn`, matching x positions, `y = 18` |
+| FR-003: BGM button toggles music only | ✅ | `this.music.setMute()` only — decoupled from SFX |
+| FR-004: SFX button toggles SFX only | ✅ | All 6 `sound.play()` call sites guarded with `if (!isSfxMuted())` |
+| FR-005: Icons reflect current state | ✅ | `setText()` called on every toggle in both scenes |
+| FR-006: BGM pref persisted | ✅ | `snakeMuted` key; existing helpers reused |
+| FR-007: SFX pref persisted | ✅ | `snakeSfxMuted` key; new helpers added |
+| FR-008: Both prefs fully independent | ✅ | Separate keys, no cross-writes anywhere |
+| FR-009: Default unmuted = no storage write | ✅ | Absent key returns `false`; never writes on first load |
+| FR-010: Legend changes reflect in Game without reload | ✅ | Applied via `localStorage` read in `GameScene.create()` on `scene.start()` |
+| FR-011: Buttons fit in HUD height | ✅ (unverified visually) | `y = HUD_H/2` consistent with existing elements — T008 verifies |
+| FR-012: LegendScene top-right convention | ✅ | Same x values as GameScene; `y = 18` matches title row |
+
+**12/12 functional requirements implemented. 0 orphaned tasks.**
+
+---
+
+## 3. Success Criteria
+
+| SC | Met? | Notes |
+|----|------|-------|
+| SC-001: BGM silenced, SFX audible | ✅ | `this.music.setMute(true)` + no global mute |
+| SC-002: SFX silenced, BGM plays | ✅ | Guards at all call sites, `this.music` untouched |
+| SC-003: Legend changes reflected in Game | ✅ | `GameScene.create()` reads localStorage on `scene.start()` |
+| SC-004: Reload restores both prefs | ✅ | Both flags read from localStorage in `create()` |
+| SC-005: HUD elements not displaced | ✅ (T008 unverified) | `bestTxt` at `CANVAS_W-100` unchanged |
+| SC-006: Both buttons visible on both screens | ✅ | Confirmed in code |
+
+---
+
+## 4. Findings
+
+| ID | Severity | Location | Summary | Actionable in code? |
+|----|----------|----------|---------|---------------------|
+| I1 | LOW | `game.js` ~line 424 | `bgmBtn`/`sfxBtn` created before `this.music` is assigned. Safe (clicks arrive post-`create()`), but lacked explanatory comment. **Fixed in this iteration.** | ✅ Fixed |
+| I2 | MEDIUM | `spec.md` FR-010 | "Immediately reflected" wording is ambiguous vs implementation's `create()` re-read pattern. | ❌ Spec artifact |
+| I3 | INFO | `plan.md`, `game.js` | Prior deferred H2 (SFX double-read) resolved by implementation using `const nowSfxMuted = !isSfxMuted()` pattern. | ✅ None needed |
+| I4 | LOW | `tasks.md` T001 | T001 anchor references unborn `setSfxMutePref` instead of `setMutePref`. Cosmetic, no runtime impact. | ❌ Tasks artifact |
+| I5 | MEDIUM | `spec.md` edge case | Rapid-click: no debounce. Low practical risk — Phaser serializes pointer events. | ✅ None needed |
+| I6 | HIGH | `game.js`, constitution | Emoji buttons < 48×48px (Principle III). Accepted deviation documented in `plan.md`. | ✅ Documented deviation |
+| I7 | HIGH | `game.js`, constitution | Pointer-only buttons (Principle: keyboard-focusable). Requires design decision: keyboard shortcuts vs constitution amendment. | ❌ Requires design decision |
+| I8 | INFO | `data-model.md`, `game.js` | Origin `(0.5, 0.5)` vs `.setOrigin(0.5)` — exact Phaser match. | ✅ None needed |
+| I9 | LOW | `spec.md` US2 AC1 | AC1 says "music stops" on Legend screen click — semantically correct but misleading (music already stopped). | ❌ Spec artifact |
+| I10 | LOW | `plan.md` change order | Edit #2 before Edit #3 ordering concern — not an issue in practice. | ❌ Plan cosmetic |
+| I11 | INFO | `game.js` `gameWon()` | No SFX in `gameWon()`. Confirmed in scope — no win SFX was designed. | ✅ None needed |
+| I12 | LOW | `tasks.md` T007 | Confirmation-only task; cosmetically better as checklist item under T009. | ❌ Tasks cosmetic |
+
+---
+
+## 5. Consistency Summary
+
+| Axis | Status |
+|------|--------|
+| `snakeMuted` / `snakeSfxMuted` keys | ✅ Consistent across all artifacts |
+| Button x-positions (`CANVAS_W-76` / `CANVAS_W-36`) | ✅ Consistent: plan, data-model, game.js |
+| `bestTxt` position unchanged | ✅ Consistent |
+| LegendScene writes localStorage only | ✅ Consistent: research, plan, data-model, implementation |
+| BGM via `this.music.setMute()` (instance) | ✅ Consistent |
+| SFX via `if (!isSfxMuted())` guards (all 6 sites) | ✅ Consistent |
+| Fail-open on localStorage error | ✅ Consistent: all 4 helpers have try/catch |
+| Init order comment (I1) | ✅ Fixed — comment added |
+
+---
+
+## 6. Remaining Actionable Findings
+
+| ID | Severity | Resolution Required |
+|----|----------|---------------------|
+| I7 | HIGH | Human decision: add keyboard shortcuts (`M`/`X`) for BGM/SFX OR amend constitution to exclude supplemental HUD controls from keyboard-focusable requirement |
+| I2 | MEDIUM | Human edit: clarify FR-010 "immediately reflected" in `spec.md` |
+| I9 | LOW | Human edit: clarify US2 AC1 wording in `spec.md` |
+| I4, I10, I12 | LOW | Cosmetic cleanup of `tasks.md` and `plan.md` |
+
+**Net new implementation gaps**: None.
+**Status**: CLEAN for implementation. Deferred items are documentation/design decisions only.
+
 | M1  | Task Quality          | MEDIUM   | tasks.md T007                                 | T007 is a verification-only task with no code output: "add a code comment noting persistence is handled by helper reads in `create()` if both are already present." A task that may produce zero observable change is untestable and its "Checkpoint" cannot be objectively verified by CI or a reviewer. | Either (a) promote T007's acceptance criterion into T009's smoke-test checklist and delete T007 as a standalone task, or (b) make it a mandatory code comment with required phrasing so it has a concrete, verifiable output. |
 | M2  | Spec Ambiguity        | MEDIUM   | spec.md Edge Cases §3                         | Edge case: "When a new game round starts after the player muted SFX on the Legend screen, the SFX muted preference MUST be respected from the first tick." This is satisfied architecturally (isSfxMuted() is read at each `sound.play()` call), but no task explicitly validates this specific cross-screen-then-play scenario. T009's smoke test does not mention starting a new round immediately after a Legend screen preference change. | Add a sub-step to T009: "After toggling SFX on the Legend screen, start a new game and verify no SFX plays on the first food contact." |
 | M3  | Data Model Gap        | MEDIUM   | data-model.md §State Transitions, plan.md Change 2 | The data model's State Transitions note that `GameScene.tick()` contains a BGM cold-start recovery path guarded by `!isMuted()`. After Change 3 replaces `this.sound.setMute()` with `this.music.setMute()`, the tick guard becomes "the SOLE fallback for starting BGM when AudioContext was locked." The data model explicitly warns this guard MUST be preserved. However, no task confirms that the tick guard is untouched (it's not part of any edit), and T002 touches the same `create()` function area. | Add a checkpoint note to T002: "Confirm the `tick()` BGM cold-start guard at `if (!this.musicStarted && !isMuted())` (game.js ~line 478) is NOT modified by this change." |

@@ -18,4 +18,5 @@ canvas {
   box-shadow: 0 0 40px rgba(0, 230, 118, 0.3);
   max-width: 100%;
   display: block;
+  touch-action: none;
 }

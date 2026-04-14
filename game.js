@@ -421,6 +421,8 @@ class GameScene extends Phaser.Scene {
     }).setOrigin(1, 0.5);
 
     // BGM toggle button
+    // Note: this.music is assigned later in create(); clicking before assignment is impossible
+    // because Phaser pointer events only fire after create() returns.
     const bgmBtn = this.add.text(CANVAS_W - 76, HUD_H / 2, isMuted() ? '🔇' : '🔊', {
       fontFamily: '"Trebuchet MS", Arial',
       fontSize:   '22px',
@@ -484,6 +486,25 @@ class GameScene extends Phaser.Scene {
     }
 
     this.restartTick(TICK_BASE);
+
+    // Mobile swipe controls
+    this._swipeStart = null;
+    this.input.on('pointerdown', (p) => {
+      this._swipeStart = { x: p.x, y: p.y };
+    });
+    this.input.on('pointerup', (p) => {
+      if (!this._swipeStart) return;
+      const dx    = p.x - this._swipeStart.x;
+      const dy    = p.y - this._swipeStart.y;
+      const absDx = Math.abs(dx);
+      const absDy = Math.abs(dy);
+      this._swipeStart = null;
+      if (Math.max(absDx, absDy) < 30) return; // too short — ignore
+      const dir = absDx > absDy
+        ? (dx > 0 ? DIRS.RIGHT : DIRS.LEFT)
+        : (dy > 0 ? DIRS.DOWN  : DIRS.UP);
+      if (dir !== OPPOSITES.get(this.state.dir)) this.state.nextDir = dir;
+    });
   }
 
   // T008 — buffer directional input
@@ -1180,6 +1201,10 @@ const config = {
   height:          CANVAS_H,
   backgroundColor: '#1a1a2e',
   parent:          document.body,
+  scale: {
+    mode:       Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH
+  },
   scene:           [MenuScene, GameScene, GameOverScene, LegendScene]
 };
 

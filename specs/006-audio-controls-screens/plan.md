@@ -5,33 +5,35 @@
 
 ## Summary
 
-Feature 005 introduced a single combined audio mute button in the Game screen HUD. Feature 006 splits that into two independent channels — BGM and SFX — each with its own toggle button. The same two buttons are added to the Legend screen's top-right corner. A new `snakeSfxMuted` localStorage key tracks SFX preference independently from the existing `snakeMuted` (BGM) key. All changes are confined to `game.js` (6 targeted edits, no new files).
+Replace the single combined mute button in the Game screen HUD with two independent icon buttons — one for BGM (🔊/🔇) and one for SFX (🔔/🔕) — and add the same two buttons to the Legend screen. Each button controls only its respective audio channel and persists its state to `localStorage` independently. No new assets or dependencies are introduced; all changes are confined to `game.js`.
+
+Technical approach: per-instance BGM muting via `this.music.setMute()` (replacing global `this.sound.setMute()`), plus `if (!isSfxMuted())` guards at every `sound.play('sfx_*')` call site. Legend screen buttons write to `localStorage` only — they do not access the Phaser sound manager because `GameScene` (which owns `this.music`) is never concurrently active with `LegendScene`.
 
 ## Technical Context
 
 **Language/Version**: Vanilla JavaScript ES6+  
-**Primary Dependencies**: Phaser 4.0.0 (local `lib/phaser.min.js`) — built-in sound manager  
+**Primary Dependencies**: Phaser 4.0.0 (local, `lib/phaser.min.js`) — built-in sound manager wraps Web Audio API  
 **Storage**: `window.localStorage` — keys `snakeMuted` (BGM, existing) and `snakeSfxMuted` (SFX, new)  
-**Testing**: Not applicable — no automated test suite in this project  
-**Target Platform**: Modern evergreen browsers (Chrome 90+, Firefox 88+, Edge 90+, Safari 14+); file:// protocol  
-**Project Type**: Browser game — single static file deployment  
-**Performance Goals**: 60 fps game loop unaffected; button response < 1 frame  
-**Constraints**: Offline-capable; no new asset files; no new dependencies; HUD elements must not overlap  
-**Scale/Scope**: 2 scenes modified (`GameScene`, `LegendScene`), 6 code changes in `game.js`
+**Testing**: Manual browser smoke test (no automated test framework)  
+**Target Platform**: Browser (desktop primary; mobile out of scope for this feature)  
+**Project Type**: Single-file browser game  
+**Performance Goals**: No change to rendering or game-loop throughput; audio calls are infrequent (at most once per tick)  
+**Constraints**: All changes in `game.js` only; no new files; no new network requests; backward-compatible with the existing `snakeMuted` key  
+**Scale/Scope**: 6 targeted edits to `game.js`; 2 new `localStorage` helper functions
 
 ## Constitution Check
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+*Evaluated against project principles identified in prior features.*
 
-| Principle | Status | Justification |
-|-----------|--------|---------------|
-| I. Browser-Native, Zero Dependencies | ✅ Pass | localStorage + Phaser sound API; no new deps |
-| II. Game-Loop Integrity | ✅ Pass | Button handlers are UI callbacks, not tick mutations |
-| III. Child-Friendly UX | ⚠️ Accepted deviation | Emoji-only buttons (≈28 px, no text label) — same deviation as feature 005 precedent; supplemental HUD controls, not primary game interactions |
-| IV. Single-File Delivery | ✅ Pass | No new assets or network requests |
-| V. Gameplay Simplicity | ✅ Pass | No game-loop or game-state changes |
+| Principle | Status | Notes |
+|-----------|--------|-------|
+| Browser-Native, Zero Dependencies | ✅ Pass | No new dependencies; `localStorage` + Phaser sound API only |
+| Game-Loop Integrity | ✅ Pass | Button handlers are UI event callbacks, not tick-time mutations |
+| Child-Friendly UX | ⚠️ Accepted deviation | Emoji-only buttons are < 48×48 px. Documented as accepted per feature 005 precedent; buttons are supplemental HUD accessories, not primary game interactions |
+| Single-File Delivery | ✅ Pass | No new assets or network requests |
+| Gameplay Simplicity | ✅ Pass | No game-loop or state-model changes |
 
-**Post-design re-check**: No new violations introduced by data-model or UI layout decisions.
+**Complexity justification for ⚠️**: Emoji audio controls are identical in style to the existing feature 005 mute button. Adding text labels would require HUD layout redesign outside this feature's scope. Accepted deviation is consistent with the established pattern.
 
 ## Project Structure
 
@@ -39,193 +41,65 @@ Feature 005 introduced a single combined audio mute button in the Game screen HU
 
 ```text
 specs/006-audio-controls-screens/
-├── plan.md        ← this file
-├── research.md    ← Phase 0 output
-├── data-model.md  ← Phase 1 output
-└── tasks.md       ← Phase 2 output (/speckit.tasks — not created here)
+├── plan.md        # This file
+├── research.md    # Phase 0 — design questions resolved
+├── data-model.md  # Phase 1 — entities, localStorage keys, UI element layout
+└── tasks.md       # Phase 2 — 9 tasks (T001–T009) across 6 phases
 ```
 
-### Source Code
+### Source Code (repository root)
 
 ```text
-game.js    ← sole modified file; all 6 changes are in-place edits
-audio/     ← unchanged (assets from feature 005)
+game.js            # All changes — 6 edits, 2 new helper functions
 ```
 
-No new files. No new directories.
+No new files. No structural changes to the repository.
 
-## Complexity Tracking
+**Structure Decision**: Single-file vanilla JS game. All feature code lives in `game.js` alongside existing scenes and helpers.
 
-> No constitution violations requiring justification beyond the accepted emoji-button deviation (carried from feature 005).
+## Phase 0 — Research
 
----
+All design questions resolved in [`research.md`](research.md). Key decisions:
 
-## Blueprint
+- **BGM control**: Replace `this.sound.setMute()` (global) with `this.music.setMute()` (instance-only) to decouple BGM from SFX.
+- **SFX control**: Guard every `sound.play('sfx_*')` call with `if (!isSfxMuted())` — stateless reads at the call site; no in-memory flag needed.
+- **LegendScene**: Writes to `localStorage` only; does not touch `this.music` (owned by `GameScene`, which is not active during `LegendScene`).
+- **localStorage key**: New `snakeSfxMuted` key; existing `snakeMuted` unchanged for backward compatibility.
+- **HUD layout**: Two buttons at `CANVAS_W - 76` (BGM) and `CANVAS_W - 36` (SFX); `bestTxt` stays at `CANVAS_W - 100`.
 
-All changes are in `game.js`. Changes are listed in implementation order (dependency-safe top-to-bottom sequence).
+## Phase 1 — Design
 
----
+Full entity definitions, state transitions, and UI element layout documented in [`data-model.md`](data-model.md). Summary:
 
-### Change 1 — Add `isSfxMuted()` and `setSfxMutePref()` helpers
+### New localStorage key
 
-**Location**: Immediately after `setMutePref()` (currently after line ~225)  
-**Type**: Insert
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `snakeSfxMuted` | `'true'` \| `'false'` \| absent | absent → `false` | SFX muted preference. Absent = unmuted (fail-open). |
 
-```javascript
-function isSfxMuted() {
-  try { return localStorage.getItem('snakeSfxMuted') === 'true'; }
-  catch (e) { return false; }
-}
+### New helper functions (module scope in `game.js`)
 
-function setSfxMutePref(muted) {
-  try { localStorage.setItem('snakeSfxMuted', String(muted)); }
-  catch (e) { /* best-effort; ignore storage errors */ }
-}
+```js
+function isSfxMuted()           // reads snakeSfxMuted → boolean; try/catch fail-open
+function setSfxMutePref(muted)  // writes snakeSfxMuted; try/catch fail-open
 ```
 
-**Rationale**: Follows the exact same try/catch pattern as `isMuted()` / `setMutePref()`. New key `snakeSfxMuted` is independent of `snakeMuted`.
+### UI elements added
 
----
+| Screen | Element | x | y | Icon |
+|--------|---------|---|---|------|
+| GameScene HUD | `bgmBtn` (replaces `muteTxt`) | `CANVAS_W - 76` | `HUD_H / 2` | 🔊 / 🔇 |
+| GameScene HUD | `sfxBtn` (new) | `CANVAS_W - 36` | `HUD_H / 2` | 🔔 / 🔕 |
+| LegendScene | `lgBgmBtn` | `CANVAS_W - 76` | 18 | 🔊 / 🔇 |
+| LegendScene | `lgSfxBtn` | `CANVAS_W - 36` | 18 | 🔔 / 🔕 |
 
-### Change 2 — Replace the single mute button in `GameScene.create()` with BGM + SFX buttons
+### Edits to `game.js`
 
-**Location**: The existing `muteTxt` block in `GameScene.create()` (the `// T003 — mute toggle button in HUD` block)  
-**Type**: Replace
-
-Replace the existing combined `muteTxt` block with two separate buttons:
-
-```javascript
-    // BGM toggle button
-    const bgmBtn = this.add.text(CANVAS_W - 76, HUD_H / 2, isMuted() ? '🔇' : '🔊', {
-      fontFamily: '"Trebuchet MS", Arial',
-      fontSize:   '22px',
-      color:      '#ffffff'
-    }).setOrigin(0.5)
-      .setInteractive({ useHandCursor: true })
-      .on('pointerover', () => bgmBtn.setScale(1.15))
-      .on('pointerout',  () => bgmBtn.setScale(1.0))
-      .on('pointerdown', () => {
-        bgmBtn.setScale(0.9);
-        const nowMuted = !isMuted();
-        setMutePref(nowMuted);
-        this.music.setMute(nowMuted);
-        bgmBtn.setText(nowMuted ? '🔇' : '🔊');
-      })
-      .on('pointerup', () => bgmBtn.setScale(1.0));
-
-    // SFX toggle button
-    const sfxBtn = this.add.text(CANVAS_W - 36, HUD_H / 2, isSfxMuted() ? '🔕' : '🔔', {
-      fontFamily: '"Trebuchet MS", Arial',
-      fontSize:   '22px',
-      color:      '#ffffff'
-    }).setOrigin(0.5)
-      .setInteractive({ useHandCursor: true })
-      .on('pointerover', () => sfxBtn.setScale(1.15))
-      .on('pointerout',  () => sfxBtn.setScale(1.0))
-      .on('pointerdown', () => {
-        sfxBtn.setScale(0.9);
-        setSfxMutePref(!isSfxMuted());
-        sfxBtn.setText(isSfxMuted() ? '🔕' : '🔔');
-      })
-      .on('pointerup', () => sfxBtn.setScale(1.0));
-```
-
-**Rationale**: BGM button now calls `this.music.setMute()` (instance-level) instead of `this.sound.setMute()` (global). SFX button writes only to localStorage; the guard is applied at each `sound.play()` call site.
-
----
-
-### Change 3 — Fix BGM init: replace global `sound.setMute()` with `music.setMute()`
-
-**Location**: `GameScene.create()` — the line `this.sound.setMute(isMuted());`  
-**Type**: Replace one line
-
-```javascript
-    this.music.setMute(isMuted());
-```
-
-**Rationale**: The old `this.sound.setMute(isMuted())` applied a global mute that would also silence SFX. Using the instance-level `this.music.setMute()` restricts the BGM preference to the BGM track only.
-
----
-
-### Change 4 — Add `isSfxMuted()` guards to all SFX `sound.play()` calls in `applyFoodEffect()`
-
-**Location**: The 5 `case` arms in `GameScene.applyFoodEffect()` switch  
-**Type**: Replace (each `this.sound.play('sfx_eat_*', ...)` becomes conditional)
-
-```javascript
-    switch (food.type) {
-      case FOOD_TYPES.STANDARD: state.growthRemaining++; state.score++;    if (!isSfxMuted()) this.sound.play('sfx_eat_standard', { volume: 0.7 }); break;
-      case FOOD_TYPES.PENTA:    this.growSnake(5);       state.score += 5; if (!isSfxMuted()) this.sound.play('sfx_eat_penta',    { volume: 0.8 }); break;
-      case FOOD_TYPES.RUSH:     this.shrinkSnake(5);  this.activateRush();  if (!isSfxMuted()) this.sound.play('sfx_eat_rush',     { volume: 0.8 }); break;
-      case FOOD_TYPES.STAR:     state.score += 10;                          if (!isSfxMuted()) this.sound.play('sfx_eat_star',     { volume: 0.8 }); break;
-      case FOOD_TYPES.BOMB:     this.bombEffect();                          if (!isSfxMuted()) this.sound.play('sfx_eat_bomb',     { volume: 0.9 }); break;
-    }
-```
-
----
-
-### Change 5 — Add `isSfxMuted()` guard to collision SFX in `gameOver()`
-
-**Location**: First statement in `GameScene.gameOver()`  
-**Type**: Replace one line
-
-```javascript
-    if (!isSfxMuted()) this.sound.play('sfx_collision', { volume: 1.0 });
-```
-
----
-
-### Change 6 — Add BGM + SFX buttons to `LegendScene.create()`
-
-**Location**: `LegendScene.create()` — after the "Legenda" title `this.add.text()` block and before the entry definitions  
-**Type**: Insert
-
-```javascript
-    // BGM toggle button (top-right, same row as title)
-    const lgBgmBtn = this.add.text(CANVAS_W - 76, 18, isMuted() ? '🔇' : '🔊', {
-      fontFamily: '"Trebuchet MS", Arial',
-      fontSize:   '22px',
-      color:      '#ffffff'
-    }).setOrigin(0.5)
-      .setInteractive({ useHandCursor: true })
-      .on('pointerover', () => lgBgmBtn.setScale(1.15))
-      .on('pointerout',  () => lgBgmBtn.setScale(1.0))
-      .on('pointerdown', () => {
-        lgBgmBtn.setScale(0.9);
-        setMutePref(!isMuted());
-        lgBgmBtn.setText(isMuted() ? '🔇' : '🔊');
-      })
-      .on('pointerup', () => lgBgmBtn.setScale(1.0));
-
-    // SFX toggle button (top-right, same row as title)
-    const lgSfxBtn = this.add.text(CANVAS_W - 36, 18, isSfxMuted() ? '🔕' : '🔔', {
-      fontFamily: '"Trebuchet MS", Arial',
-      fontSize:   '22px',
-      color:      '#ffffff'
-    }).setOrigin(0.5)
-      .setInteractive({ useHandCursor: true })
-      .on('pointerover', () => lgSfxBtn.setScale(1.15))
-      .on('pointerout',  () => lgSfxBtn.setScale(1.0))
-      .on('pointerdown', () => {
-        lgSfxBtn.setScale(0.9);
-        setSfxMutePref(!isSfxMuted());
-        lgSfxBtn.setText(isSfxMuted() ? '🔕' : '🔔');
-      })
-      .on('pointerup', () => lgSfxBtn.setScale(1.0));
-```
-
-**Rationale**: LegendScene has no active `this.music` (GameScene is not running simultaneously). Buttons write to localStorage only; preferences are read by GameScene on the next `create()` call. No interaction with the Phaser sound manager is needed here.
-
----
-
-## Dependency Order
-
-```
-Change 1 (helpers) → Change 2 (GameScene BGM+SFX buttons)
-                   → Change 3 (fix sound.setMute → music.setMute)
-                   → Change 4 (SFX guards in applyFoodEffect)
-                   → Change 5 (SFX guard in gameOver)
-                   → Change 6 (LegendScene buttons)
-```
-
-Changes 3–6 all depend on Change 1 (new helpers). Changes 3–6 are independent of each other and can be applied in any order after Change 1.
+| # | Location | Change |
+|---|----------|--------|
+| 1 | Module scope (after `setMutePref`) | Add `isSfxMuted()` and `setSfxMutePref()` |
+| 2 | `GameScene.create()` — BGM init | `this.sound.setMute()` → `this.music.setMute()` |
+| 3 | `GameScene.create()` — HUD buttons | Replace `muteTxt` block with `bgmBtn` + `sfxBtn` |
+| 4 | `GameScene.applyFoodEffect()` | Wrap 5 `sound.play('sfx_eat_*')` calls with `if (!isSfxMuted())` |
+| 5 | `GameScene.gameOver()` | Wrap `sound.play('sfx_collision')` with `if (!isSfxMuted())` |
+| 6 | `LegendScene.create()` | Add `lgBgmBtn` + `lgSfxBtn` after the title block |
