@@ -235,7 +235,7 @@ function setSfxMutePref(muted) {
 
 // --- Language Preference (localStorage) ---
 function getLang() {
-  try { return localStorage.getItem('snakeLang') || 'pt'; }
+  try { return localStorage.getItem('snakeLang') || 'en'; }
   catch (e) { return 'pt'; }
 }
 
@@ -317,13 +317,181 @@ const TRANSLATIONS = {
       BOMB:     { name: 'Bomba',     desc: 'Convierte 5 segmentos en obstáculos. Vale 10 puntos.' },
       OBSTACLE: { name: 'Obstáculo', desc: 'Creado por Bomba. La colisión termina el juego.' }
     }
+  },
+  de: {
+    score:          'Punkte',
+    best:           'Beste',
+    controls:       'Benutze  ↑↓←→  oder  W A S D',
+    play:           '🎮  SPIELEN',
+    playAgain:      '🎮 NOCHMAL SPIELEN',
+    legendTitle:    'Legende',
+    won:            '🏆 DU HAST GEWONNEN!',
+    lost:           '💥 SPIEL VORBEI!',
+    scoreLabel:     'Punkte',
+    bestLabel:      '⭐ Beste',
+    newRecord:      '🏆 Neuer Rekord!',
+    enableSpecials: 'Spezials aktivieren',
+    disableSpecials:'Spezials deaktivieren',
+    language:       'Sprache',
+    food: {
+      STANDARD: { name: 'Normal',    desc: 'Wächst um 1 Segment und bringt 1 Punkt.' },
+      PENTA:    { name: 'Penta',     desc: 'Wächst um 5 Segmente und bringt 5 Punkte — selten!' },
+      RUSH:     { name: 'Turbo',     desc: 'Kürzt 5 Segmente und beschleunigt für 5 Sekunden.' },
+      STAR:     { name: 'Stern',     desc: 'Bewegt sich allein. Bringt 10 Punkte. Kein Wachstum.' },
+      BOMB:     { name: 'Bombe',     desc: 'Verwandelt 5 Segmente in Hindernisse. Bringt 10 Punkte.' },
+      OBSTACLE: { name: 'Hindernis', desc: 'Von Bombe erstellt. Kollision beendet das Spiel.' }
+    }
+  },
+  fr: {
+    score:          'Points',
+    best:           'Meilleur',
+    controls:       'Utilise  ↑↓←→  ou  W A S D',
+    play:           '🎮  JOUER',
+    playAgain:      '🎮 REJOUER',
+    legendTitle:    'Légende',
+    won:            '🏆 TU AS GAGNÉ !',
+    lost:           '💥 FIN DE JEU !',
+    scoreLabel:     'Score',
+    bestLabel:      '⭐ Meilleur',
+    newRecord:      '🏆 Nouveau Record !',
+    enableSpecials: 'Activer les spéciaux',
+    disableSpecials:'Désactiver les spéciaux',
+    language:       'Langue',
+    food: {
+      STANDARD: { name: 'Normal',    desc: 'Grandit de 1 segment et rapporte 1 point.' },
+      PENTA:    { name: 'Penta',     desc: 'Grandit de 5 segments et rapporte 5 points — rare !' },
+      RUSH:     { name: 'Turbo',     desc: 'Réduit de 5 segments et accélère pendant 5 secondes.' },
+      STAR:     { name: 'Étoile',    desc: 'Se déplace seule. Rapporte 10 points. Pas de croissance.' },
+      BOMB:     { name: 'Bombe',     desc: 'Transforme 5 segments en obstacles. Rapporte 10 points.' },
+      OBSTACLE: { name: 'Obstacle',  desc: 'Créé par la Bombe. La collision termine le jeu.' }
+    }
+  },
+  ru: {
+    score:          'Очки',
+    best:           'Рекорд',
+    controls:       'Используй  ↑↓←→  или  W A S D',
+    play:           '🎮  ИГРАТЬ',
+    playAgain:      '🎮 ИГРАТЬ СНОВА',
+    legendTitle:    'Легенда',
+    won:            '🏆 ТЫ ПОБЕДИЛ!',
+    lost:           '💥 ИГРА ОКОНЧЕНА!',
+    scoreLabel:     'Очки',
+    bestLabel:      '⭐ Рекорд',
+    newRecord:      '🏆 Новый Рекорд!',
+    enableSpecials: 'Включить спецеды',
+    disableSpecials:'Выключить спецеды',
+    language:       'Язык',
+    food: {
+      STANDARD: { name: 'Обычная',   desc: 'Растёт на 1 сегмент и даёт 1 очко.' },
+      PENTA:    { name: 'Пента',     desc: 'Растёт на 5 сегментов и даёт 5 очков — редко!' },
+      RUSH:     { name: 'Турбо',     desc: 'Срезает 5 сегментов и ускоряет на 5 секунд.' },
+      STAR:     { name: 'Звезда',    desc: 'Движется сама. Даёт 10 очков. Не растёт.' },
+      BOMB:     { name: 'Бомба',     desc: 'Превращает 5 сегментов в препятствия. Даёт 10 очков.' },
+      OBSTACLE: { name: 'Препятствие', desc: 'Создано Бомбой. Столкновение завершает игру.' }
+    }
+  },
+  ja: {
+    score:          'スコア',
+    best:           'ベスト',
+    controls:       '↑↓←→  または  W A S D を使用',
+    play:           '🎮  プレイ',
+    playAgain:      '🎮 もう一度プレイ',
+    legendTitle:    '凡例',
+    won:            '🏆 あなたの勝ち！',
+    lost:           '💥 ゲームオーバー！',
+    scoreLabel:     'スコア',
+    bestLabel:      '⭐ ベスト',
+    newRecord:      '🏆 新記録！',
+    enableSpecials: 'スペシャル有効',
+    disableSpecials:'スペシャル無効',
+    language:       '言語',
+    food: {
+      STANDARD: { name: '普通',       desc: '1セグメント成長、1ポイント獲得。' },
+      PENTA:    { name: 'ペンタ',     desc: '5セグメント成長、5ポイント獲得 — レア！' },
+      RUSH:     { name: 'ターボ',     desc: '5セグメント削減、5秒間加速。' },
+      STAR:     { name: 'スター',     desc: '自動移動。10ポイント獲得。成長なし。' },
+      BOMB:     { name: 'ボム',       desc: '5セグメントを障害物に変換。10ポイント獲得。' },
+      OBSTACLE: { name: '障害物',     desc: 'ボムが作成。衝突でゲーム終了。' }
+    }
+  },
+  zh: {
+    score:          '分数',
+    best:           '最高分',
+    controls:       '使用  ↑↓←→  或  W A S D',
+    play:           '🎮  开始游戏',
+    playAgain:      '🎮 再玩一次',
+    legendTitle:    '图例',
+    won:            '🏆 你赢了！',
+    lost:           '💥 游戏结束！',
+    scoreLabel:     '分数',
+    bestLabel:      '⭐ 最高分',
+    newRecord:      '🏆 新纪录！',
+    enableSpecials: '启用特殊食物',
+    disableSpecials:'禁用特殊食物',
+    language:       '语言',
+    food: {
+      STANDARD: { name: '普通',   desc: '增长1节，得1分。' },
+      PENTA:    { name: '五倍',   desc: '增长5节，得5分——稀有！' },
+      RUSH:     { name: '涡轮',   desc: '减少5节并加速5秒。' },
+      STAR:     { name: '星星',   desc: '自动移动。得10分。不增长。' },
+      BOMB:     { name: '炸弹',   desc: '将5节变为障碍物。得10分。' },
+      OBSTACLE: { name: '障碍物', desc: '由炸弹创建。碰撞结束游戏。' }
+    }
+  },
+  hi: {
+    score:          'अंक',
+    best:           'सर्वश्रेष्ठ',
+    controls:       '↑↓←→  या  W A S D उपयोग करें',
+    play:           '🎮  खेलें',
+    playAgain:      '🎮 फिर खेलें',
+    legendTitle:    'विवरण',
+    won:            '🏆 आप जीत गए!',
+    lost:           '💥 खेल समाप्त!',
+    scoreLabel:     'अंक',
+    bestLabel:      '⭐ सर्वश्रेष्ठ',
+    newRecord:      '🏆 नया रिकॉर्ड!',
+    enableSpecials: 'विशेष सक्षम करें',
+    disableSpecials:'विशेष अक्षम करें',
+    language:       'भाषा',
+    food: {
+      STANDARD: { name: 'सामान्य',  desc: '1 खंड बढ़ता है और 1 अंक मिलता है।' },
+      PENTA:    { name: 'पेंटा',    desc: '5 खंड बढ़ते हैं और 5 अंक मिलते हैं — दुर्लभ!' },
+      RUSH:     { name: 'टर्बो',    desc: '5 खंड घटाता है और 5 सेकंड के लिए तेज़ करता है।' },
+      STAR:     { name: 'तारा',     desc: 'खुद चलता है। 10 अंक मिलते हैं। बढ़ता नहीं।' },
+      BOMB:     { name: 'बम',       desc: '5 खंडों को अवरोध में बदलता है। 10 अंक मिलते हैं।' },
+      OBSTACLE: { name: 'अवरोध',   desc: 'बम द्वारा बनाया गया। टकराने से खेल समाप्त।' }
+    }
+  },
+  ar: {
+    score:          'النقاط',
+    best:           'أفضل',
+    controls:       'استخدم  ↑↓←→  أو  W A S D',
+    play:           '🎮  العب',
+    playAgain:      '🎮 العب مجدداً',
+    legendTitle:    'الدليل',
+    won:            '🏆 لقد فزت!',
+    lost:           '💥 انتهت اللعبة!',
+    scoreLabel:     'النقاط',
+    bestLabel:      '⭐ أفضل',
+    newRecord:      '🏆 رقم قياسي جديد!',
+    enableSpecials: 'تفعيل الخاصة',
+    disableSpecials:'تعطيل الخاصة',
+    language:       'اللغة',
+    food: {
+      STANDARD: { name: 'عادي',     desc: 'ينمو قطعة واحدة ويمنح نقطة واحدة.' },
+      PENTA:    { name: 'بنتا',     desc: 'ينمو 5 قطع ويمنح 5 نقاط — نادر!' },
+      RUSH:     { name: 'توربو',    desc: 'يقلص 5 قطع ويسرّع لمدة 5 ثوانٍ.' },
+      STAR:     { name: 'نجمة',     desc: 'تتحرك وحدها. تمنح 10 نقاط. لا نمو.' },
+      BOMB:     { name: 'قنبلة',    desc: 'تحوّل 5 قطع إلى عوائق. تمنح 10 نقاط.' },
+      OBSTACLE: { name: 'عائق',     desc: 'أُنشئ بالقنبلة. الاصطدام ينهي اللعبة.' }
+    }
   }
 };
 
 // Returns the translated string for a top-level key in the current language.
 function t(key) {
-  const lang = TRANSLATIONS[getLang()] ?? TRANSLATIONS.pt;
-  return lang[key] ?? TRANSLATIONS.pt[key] ?? key;
+  const lang = TRANSLATIONS[getLang()] ?? TRANSLATIONS.en;
+  return lang[key] ?? TRANSLATIONS.en[key] ?? key;
 }
 
 // Server-integration seam: swap this function to use a real server response.
@@ -1272,9 +1440,16 @@ class LegendScene extends Phaser.Scene {
     // Language selector — top-right, left of audio buttons
     const _curLang = getLang();
     const _langOpts = [
-      { code: 'pt', label: 'Portugu\u00eas' },
+      { code: 'pt', label: 'Português' },
       { code: 'en', label: 'English' },
-      { code: 'es', label: 'Espa\u00f1ol' }
+      { code: 'es', label: 'Español' },
+      { code: 'de', label: 'Deutsch' },
+      { code: 'fr', label: 'Français' },
+      { code: 'ru', label: 'Русский' },
+      { code: 'ja', label: '日本語' },
+      { code: 'zh', label: '中文' },
+      { code: 'hi', label: 'हिन्दी' },
+      { code: 'ar', label: 'العربية' }
     ].map(l => `<option value="${l.code}"${l.code === _curLang ? ' selected' : ''}>${l.label}</option>`).join('');
 
     const _langSel = this.add.dom(CANVAS_W - 165, 32).createFromHTML(
