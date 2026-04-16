@@ -1449,9 +1449,12 @@ class LegendScene extends Phaser.Scene {
     ];
 
     const sepGfx = this.add.graphics();  // separators always full opacity
-    const ROW_H   = Math.floor((CANVAS_H - 200) / entries.length);
+    const ROW_H   = Math.min(90, Math.floor((CANVAS_H - 200) / entries.length));
     const Y_START = 58;
     const specialEnabled = isSpecialFoodsEnabled();
+    const _textW    = CANVAS_W - 82;  // available width for text after icon
+    const _nameFsz  = Math.max(14, Math.round(22 * Math.min(1, CANVAS_W / 400))) + 'px';
+    const _descFsz  = Math.max(12, Math.round(18 * Math.min(1, CANVAS_W / 400))) + 'px';
 
     entries.forEach((entry, i) => {
       const rowTop = Y_START + i * ROW_H;
@@ -1463,11 +1466,13 @@ class LegendScene extends Phaser.Scene {
 
       // Icon
       if (entry.type === 'OBSTACLE') {
+        const S = CELL / 28;
+        const hs = Math.round(14 * S), xl = Math.round(10 * S);
         iconGfx.fillStyle(C_OBSTACLE, 1);
-        iconGfx.fillRect(cx - 14, cy - 14, 28, 28);
-        iconGfx.lineStyle(2, 0x263238, 1);
-        iconGfx.lineBetween(cx - 10, cy - 10, cx + 10, cy + 10);
-        iconGfx.lineBetween(cx + 10, cy - 10, cx - 10, cy + 10);
+        iconGfx.fillRect(cx - hs, cy - hs, hs * 2, hs * 2);
+        iconGfx.lineStyle(Math.max(1, Math.round(2 * S)), 0x263238, 1);
+        iconGfx.lineBetween(cx - xl, cy - xl, cx + xl, cy + xl);
+        iconGfx.lineBetween(cx + xl, cy - xl, cx - xl, cy + xl);
       } else {
         drawFoodShape(iconGfx, { type: entry.type, visible: true }, cx, cy);
       }
@@ -1475,16 +1480,18 @@ class LegendScene extends Phaser.Scene {
       // Name
       const nameText = this.add.text(72, rowTop + 8, entry.nome, {
         fontFamily: '"Trebuchet MS", Arial',
-        fontSize:   '22px',
+        fontSize:   _nameFsz,
         fontStyle:  'bold',
-        color:      '#ffffff'
+        color:      '#ffffff',
+        wordWrap:   { width: _textW }
       });
 
       // Description
       const descText = this.add.text(72, rowTop + 34, entry.desc, {
         fontFamily: '"Trebuchet MS", Arial',
-        fontSize:   '18px',
-        color:      '#cccccc'
+        fontSize:   _descFsz,
+        color:      '#cccccc',
+        wordWrap:   { width: _textW }
       });
 
       // Separator (skip after last row)
