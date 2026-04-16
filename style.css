@@ -26,3 +26,10 @@ canvas {
   display: block;
   touch-action: none;
 }
+
+@media (pointer: coarse) {
+  body {
+    align-items: flex-start;
+    padding-top: max(env(safe-area-inset-top), 2vh);
+  }
+}

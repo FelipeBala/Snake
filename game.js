@@ -1534,7 +1534,7 @@ const config = {
   ...(isMobile ? {
     scale: {
       mode:       Phaser.Scale.FIT,
-      autoCenter: Phaser.Scale.CENTER_BOTH
+      autoCenter: Phaser.Scale.CENTER_HORIZONTALLY
     }
   } : {}),
   scene:           [MenuScene, GameScene, GameOverScene, LegendScene]
