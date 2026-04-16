@@ -31,5 +31,6 @@ jobs:
                 --exclude "specs/*" \
                 --exclude ".specify/*" \
                 --exclude ".vscode/*" \
+                --exclude ".gitignore" \
                 --exclude "node_modules/*" \
                 --delete

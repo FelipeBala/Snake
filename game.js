@@ -660,7 +660,8 @@ class GameScene extends Phaser.Scene {
       tickRef:         null,
       tickGen:         0,
       rushActive:      false,
-      rushTimerRef:    null
+      rushTimerRef:    null,
+      rushStackCount:  0
     };
 
     this.gfx     = this.add.graphics();
@@ -992,10 +993,11 @@ class GameScene extends Phaser.Scene {
     // updateHUD() is called by applyFoodEffect() after this returns
   }
 
-  // T020 — boost tick rate 1.5× for 5 s; reset timer on re-eat
+  // T020 — boost tick rate 1.5× per stack for 5 s; stacks on re-eat, timer resets
   activateRush() {
-    const state   = this.state;
-    const boosted = Math.max(TICK_MIN, Math.floor(state.baseDelay / RUSH_SPEED_FACTOR));
+    const state = this.state;
+    state.rushStackCount++;
+    const boosted = Math.max(TICK_MIN, Math.floor(state.baseDelay / Math.pow(RUSH_SPEED_FACTOR, state.rushStackCount)));
     this.restartTick(boosted);
     if (state.rushTimerRef) state.rushTimerRef.remove(true);
     state.rushActive   = true;
@@ -1005,8 +1007,9 @@ class GameScene extends Phaser.Scene {
   // T019 — restore score-adjusted base delay after boost expires; refresh STAR timers (A1 fix)
   rushExpired() {
     const state = this.state;
-    state.rushActive   = false;
-    state.rushTimerRef = null;
+    state.rushActive    = false;
+    state.rushTimerRef  = null;
+    state.rushStackCount = 0;
     this.restartTick(state.baseDelay);
     state.foods.filter(f => f.type === FOOD_TYPES.STAR).forEach(f => {
       if (f.starTimer) f.starTimer.remove(true);
@@ -1139,7 +1142,7 @@ class GameScene extends Phaser.Scene {
   _cleanupRound() {
     this.cancelAllStarTimers();
     const state = this.state;
-    if (state.rushTimerRef) { state.rushTimerRef.remove(true); state.rushTimerRef = null; }
+    if (state.rushTimerRef) { state.rushTimerRef.remove(false); state.rushTimerRef = null; }
     if (this.cardManager)   { this.cardManager.destroy(); this.cardManager = null; }
     this.cardStripTexts.forEach(t => t.destroy());
     this.cardStripTexts = [];
