@@ -32,6 +32,7 @@ jobs:
                 --exclude ".specify/*" \
                 --exclude ".vscode/*" \
                 --exclude ".gitignore" \
+                --exclude "README.md" \
                 --exclude "lib/*" \
                 --exclude "audio/*" \
                 --exclude "node_modules/*" \
