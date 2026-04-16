@@ -21,8 +21,11 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Sync to S3
+        env:
+          S3_BUCKET: ${{ secrets.S3_BUCKET }}
         run: |
-          aws s3 sync . "s3://${{ secrets.S3_BUCKET }}/snake" \
+          BUCKET=$(echo "$S3_BUCKET" | tr -d '[:space:]')
+          aws s3 sync . "s3://${BUCKET}/snake" \
                 --exclude ".git/*" \
                 --exclude ".github/*" \
                 --exclude "specs/*" \
