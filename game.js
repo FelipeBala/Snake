@@ -999,7 +999,7 @@ class GameScene extends Phaser.Scene {
     state.rushStackCount++;
     const boosted = Math.max(TICK_MIN, Math.floor(state.baseDelay / Math.pow(RUSH_SPEED_FACTOR, state.rushStackCount)));
     this.restartTick(boosted);
-    if (state.rushTimerRef) state.rushTimerRef.remove(true);
+    if (state.rushTimerRef) state.rushTimerRef.remove(false);
     state.rushActive   = true;
     state.rushTimerRef = this.time.delayedCall(RUSH_BOOST_DURATION, this.rushExpired, [], this);
   }
