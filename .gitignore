@@ -25,4 +25,5 @@ desktop.ini
 lib/
 audio/
 .specify/
-.github/
+.github/agents/
+.github/prompts/

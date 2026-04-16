@@ -222,6 +222,278 @@ function setMutePref(muted) {
   catch (e) { /* best-effort; ignore storage errors */ }
 }
 
+// --- SFX Mute Preference (localStorage) ---
+function isSfxMuted() {
+  try { return localStorage.getItem('snakeSfxMuted') === 'true'; }
+  catch (e) { return false; }
+}
+
+function setSfxMutePref(muted) {
+  try { localStorage.setItem('snakeSfxMuted', String(muted)); }
+  catch (e) { /* best-effort; ignore storage errors */ }
+}
+
+// --- Language Preference (localStorage) ---
+function getLang() {
+  try { return localStorage.getItem('snakeLang') || 'en'; }
+  catch (e) { return 'pt'; }
+}
+
+function setLang(code) {
+  try { localStorage.setItem('snakeLang', code); }
+  catch (e) { /* best-effort */ }
+}
+
+// UI strings per language
+const TRANSLATIONS = {
+  pt: {
+    score:          'Pontos',
+    best:           'Melhor',
+    controls:       'Use  ↑↓←→  ou  W A S D',
+    play:           '🎮  JOGAR',
+    playAgain:      '🎮 JOGAR NOVAMENTE',
+    legendTitle:    'Legenda',
+    won:            '🏆 VOCÊ VENCEU!',
+    lost:           '💥 FIM DE JOGO!',
+    scoreLabel:     'Pontuação',
+    bestLabel:      '⭐ Melhor',
+    newRecord:      '🏆 Novo Recorde!',
+    enableSpecials: 'Ativar Especiais',
+    disableSpecials:'Desativar Especiais',
+    language:       'Idioma',
+    food: {
+      STANDARD: { name: 'Normal',    desc: 'Cresce 1 segmento e vale 1 ponto.' },
+      PENTA:    { name: 'Penta',     desc: 'Cresce 5 segmentos e vale 5 pontos — raro!' },
+      RUSH:     { name: 'Turbo',     desc: 'Corta 5 segmentos e acelera por 5 segundos.' },
+      STAR:     { name: 'Estrela',   desc: 'Move-se sozinha. Vale 10 pontos. Não cresce.' },
+      BOMB:     { name: 'Bomba',     desc: 'Vira 5 segmentos em obstáculos. Vale 10 pontos.' },
+      OBSTACLE: { name: 'Obstáculo', desc: 'Criado pela Bomba. Colisão termina o jogo.' }
+    }
+  },
+  en: {
+    score:          'Score',
+    best:           'Best',
+    controls:       'Use  ↑↓←→  or  W A S D',
+    play:           '🎮  PLAY',
+    playAgain:      '🎮 PLAY AGAIN',
+    legendTitle:    'Legend',
+    won:            '🏆 YOU WIN!',
+    lost:           '💥 GAME OVER!',
+    scoreLabel:     'Score',
+    bestLabel:      '⭐ Best',
+    newRecord:      '🏆 New Record!',
+    enableSpecials: 'Enable Specials',
+    disableSpecials:'Disable Specials',
+    language:       'Language',
+    food: {
+      STANDARD: { name: 'Normal',   desc: 'Grows 1 segment and scores 1 point.' },
+      PENTA:    { name: 'Penta',    desc: 'Grows 5 segments and scores 5 points — rare!' },
+      RUSH:     { name: 'Turbo',    desc: 'Cuts 5 segments and speeds up for 5 seconds.' },
+      STAR:     { name: 'Star',     desc: 'Moves on its own. Scores 10 points. No growth.' },
+      BOMB:     { name: 'Bomb',     desc: 'Turns 5 segments into obstacles. Scores 10 points.' },
+      OBSTACLE: { name: 'Obstacle', desc: 'Created by Bomb. Collision ends the game.' }
+    }
+  },
+  es: {
+    score:          'Puntos',
+    best:           'Mejor',
+    controls:       'Usa  ↑↓←→  o  W A S D',
+    play:           '🎮  JUGAR',
+    playAgain:      '🎮 JUGAR DE NUEVO',
+    legendTitle:    'Leyenda',
+    won:            '🏆 ¡GANASTE!',
+    lost:           '💥 ¡FIN DEL JUEGO!',
+    scoreLabel:     'Puntuación',
+    bestLabel:      '⭐ Mejor',
+    newRecord:      '🏆 ¡Nuevo Récord!',
+    enableSpecials: 'Activar Especiales',
+    disableSpecials:'Desactivar Especiales',
+    language:       'Idioma',
+    food: {
+      STANDARD: { name: 'Normal',    desc: 'Crece 1 segmento y vale 1 punto.' },
+      PENTA:    { name: 'Penta',     desc: 'Crece 5 segmentos y vale 5 puntos — ¡raro!' },
+      RUSH:     { name: 'Turbo',     desc: 'Corta 5 segmentos y acelera durante 5 segundos.' },
+      STAR:     { name: 'Estrella',  desc: 'Se mueve sola. Vale 10 puntos. No crece.' },
+      BOMB:     { name: 'Bomba',     desc: 'Convierte 5 segmentos en obstáculos. Vale 10 puntos.' },
+      OBSTACLE: { name: 'Obstáculo', desc: 'Creado por Bomba. La colisión termina el juego.' }
+    }
+  },
+  de: {
+    score:          'Punkte',
+    best:           'Beste',
+    controls:       'Benutze  ↑↓←→  oder  W A S D',
+    play:           '🎮  SPIELEN',
+    playAgain:      '🎮 NOCHMAL SPIELEN',
+    legendTitle:    'Legende',
+    won:            '🏆 DU HAST GEWONNEN!',
+    lost:           '💥 SPIEL VORBEI!',
+    scoreLabel:     'Punkte',
+    bestLabel:      '⭐ Beste',
+    newRecord:      '🏆 Neuer Rekord!',
+    enableSpecials: 'Spezials aktivieren',
+    disableSpecials:'Spezials deaktivieren',
+    language:       'Sprache',
+    food: {
+      STANDARD: { name: 'Normal',    desc: 'Wächst um 1 Segment und bringt 1 Punkt.' },
+      PENTA:    { name: 'Penta',     desc: 'Wächst um 5 Segmente und bringt 5 Punkte — selten!' },
+      RUSH:     { name: 'Turbo',     desc: 'Kürzt 5 Segmente und beschleunigt für 5 Sekunden.' },
+      STAR:     { name: 'Stern',     desc: 'Bewegt sich allein. Bringt 10 Punkte. Kein Wachstum.' },
+      BOMB:     { name: 'Bombe',     desc: 'Verwandelt 5 Segmente in Hindernisse. Bringt 10 Punkte.' },
+      OBSTACLE: { name: 'Hindernis', desc: 'Von Bombe erstellt. Kollision beendet das Spiel.' }
+    }
+  },
+  fr: {
+    score:          'Points',
+    best:           'Meilleur',
+    controls:       'Utilise  ↑↓←→  ou  W A S D',
+    play:           '🎮  JOUER',
+    playAgain:      '🎮 REJOUER',
+    legendTitle:    'Légende',
+    won:            '🏆 TU AS GAGNÉ !',
+    lost:           '💥 FIN DE JEU !',
+    scoreLabel:     'Score',
+    bestLabel:      '⭐ Meilleur',
+    newRecord:      '🏆 Nouveau Record !',
+    enableSpecials: 'Activer les spéciaux',
+    disableSpecials:'Désactiver les spéciaux',
+    language:       'Langue',
+    food: {
+      STANDARD: { name: 'Normal',    desc: 'Grandit de 1 segment et rapporte 1 point.' },
+      PENTA:    { name: 'Penta',     desc: 'Grandit de 5 segments et rapporte 5 points — rare !' },
+      RUSH:     { name: 'Turbo',     desc: 'Réduit de 5 segments et accélère pendant 5 secondes.' },
+      STAR:     { name: 'Étoile',    desc: 'Se déplace seule. Rapporte 10 points. Pas de croissance.' },
+      BOMB:     { name: 'Bombe',     desc: 'Transforme 5 segments en obstacles. Rapporte 10 points.' },
+      OBSTACLE: { name: 'Obstacle',  desc: 'Créé par la Bombe. La collision termine le jeu.' }
+    }
+  },
+  ru: {
+    score:          'Очки',
+    best:           'Рекорд',
+    controls:       'Используй  ↑↓←→  или  W A S D',
+    play:           '🎮  ИГРАТЬ',
+    playAgain:      '🎮 ИГРАТЬ СНОВА',
+    legendTitle:    'Легенда',
+    won:            '🏆 ТЫ ПОБЕДИЛ!',
+    lost:           '💥 ИГРА ОКОНЧЕНА!',
+    scoreLabel:     'Очки',
+    bestLabel:      '⭐ Рекорд',
+    newRecord:      '🏆 Новый Рекорд!',
+    enableSpecials: 'Включить спецеды',
+    disableSpecials:'Выключить спецеды',
+    language:       'Язык',
+    food: {
+      STANDARD: { name: 'Обычная',   desc: 'Растёт на 1 сегмент и даёт 1 очко.' },
+      PENTA:    { name: 'Пента',     desc: 'Растёт на 5 сегментов и даёт 5 очков — редко!' },
+      RUSH:     { name: 'Турбо',     desc: 'Срезает 5 сегментов и ускоряет на 5 секунд.' },
+      STAR:     { name: 'Звезда',    desc: 'Движется сама. Даёт 10 очков. Не растёт.' },
+      BOMB:     { name: 'Бомба',     desc: 'Превращает 5 сегментов в препятствия. Даёт 10 очков.' },
+      OBSTACLE: { name: 'Препятствие', desc: 'Создано Бомбой. Столкновение завершает игру.' }
+    }
+  },
+  ja: {
+    score:          'スコア',
+    best:           'ベスト',
+    controls:       '↑↓←→  または  W A S D を使用',
+    play:           '🎮  プレイ',
+    playAgain:      '🎮 もう一度プレイ',
+    legendTitle:    '凡例',
+    won:            '🏆 あなたの勝ち！',
+    lost:           '💥 ゲームオーバー！',
+    scoreLabel:     'スコア',
+    bestLabel:      '⭐ ベスト',
+    newRecord:      '🏆 新記録！',
+    enableSpecials: 'スペシャル有効',
+    disableSpecials:'スペシャル無効',
+    language:       '言語',
+    food: {
+      STANDARD: { name: '普通',       desc: '1セグメント成長、1ポイント獲得。' },
+      PENTA:    { name: 'ペンタ',     desc: '5セグメント成長、5ポイント獲得 — レア！' },
+      RUSH:     { name: 'ターボ',     desc: '5セグメント削減、5秒間加速。' },
+      STAR:     { name: 'スター',     desc: '自動移動。10ポイント獲得。成長なし。' },
+      BOMB:     { name: 'ボム',       desc: '5セグメントを障害物に変換。10ポイント獲得。' },
+      OBSTACLE: { name: '障害物',     desc: 'ボムが作成。衝突でゲーム終了。' }
+    }
+  },
+  zh: {
+    score:          '分数',
+    best:           '最高分',
+    controls:       '使用  ↑↓←→  或  W A S D',
+    play:           '🎮  开始游戏',
+    playAgain:      '🎮 再玩一次',
+    legendTitle:    '图例',
+    won:            '🏆 你赢了！',
+    lost:           '💥 游戏结束！',
+    scoreLabel:     '分数',
+    bestLabel:      '⭐ 最高分',
+    newRecord:      '🏆 新纪录！',
+    enableSpecials: '启用特殊食物',
+    disableSpecials:'禁用特殊食物',
+    language:       '语言',
+    food: {
+      STANDARD: { name: '普通',   desc: '增长1节，得1分。' },
+      PENTA:    { name: '五倍',   desc: '增长5节，得5分——稀有！' },
+      RUSH:     { name: '涡轮',   desc: '减少5节并加速5秒。' },
+      STAR:     { name: '星星',   desc: '自动移动。得10分。不增长。' },
+      BOMB:     { name: '炸弹',   desc: '将5节变为障碍物。得10分。' },
+      OBSTACLE: { name: '障碍物', desc: '由炸弹创建。碰撞结束游戏。' }
+    }
+  },
+  hi: {
+    score:          'अंक',
+    best:           'सर्वश्रेष्ठ',
+    controls:       '↑↓←→  या  W A S D उपयोग करें',
+    play:           '🎮  खेलें',
+    playAgain:      '🎮 फिर खेलें',
+    legendTitle:    'विवरण',
+    won:            '🏆 आप जीत गए!',
+    lost:           '💥 खेल समाप्त!',
+    scoreLabel:     'अंक',
+    bestLabel:      '⭐ सर्वश्रेष्ठ',
+    newRecord:      '🏆 नया रिकॉर्ड!',
+    enableSpecials: 'विशेष सक्षम करें',
+    disableSpecials:'विशेष अक्षम करें',
+    language:       'भाषा',
+    food: {
+      STANDARD: { name: 'सामान्य',  desc: '1 खंड बढ़ता है और 1 अंक मिलता है।' },
+      PENTA:    { name: 'पेंटा',    desc: '5 खंड बढ़ते हैं और 5 अंक मिलते हैं — दुर्लभ!' },
+      RUSH:     { name: 'टर्बो',    desc: '5 खंड घटाता है और 5 सेकंड के लिए तेज़ करता है।' },
+      STAR:     { name: 'तारा',     desc: 'खुद चलता है। 10 अंक मिलते हैं। बढ़ता नहीं।' },
+      BOMB:     { name: 'बम',       desc: '5 खंडों को अवरोध में बदलता है। 10 अंक मिलते हैं।' },
+      OBSTACLE: { name: 'अवरोध',   desc: 'बम द्वारा बनाया गया। टकराने से खेल समाप्त।' }
+    }
+  },
+  ar: {
+    score:          'النقاط',
+    best:           'أفضل',
+    controls:       'استخدم  ↑↓←→  أو  W A S D',
+    play:           '🎮  العب',
+    playAgain:      '🎮 العب مجدداً',
+    legendTitle:    'الدليل',
+    won:            '🏆 لقد فزت!',
+    lost:           '💥 انتهت اللعبة!',
+    scoreLabel:     'النقاط',
+    bestLabel:      '⭐ أفضل',
+    newRecord:      '🏆 رقم قياسي جديد!',
+    enableSpecials: 'تفعيل الخاصة',
+    disableSpecials:'تعطيل الخاصة',
+    language:       'اللغة',
+    food: {
+      STANDARD: { name: 'عادي',     desc: 'ينمو قطعة واحدة ويمنح نقطة واحدة.' },
+      PENTA:    { name: 'بنتا',     desc: 'ينمو 5 قطع ويمنح 5 نقاط — نادر!' },
+      RUSH:     { name: 'توربو',    desc: 'يقلص 5 قطع ويسرّع لمدة 5 ثوانٍ.' },
+      STAR:     { name: 'نجمة',     desc: 'تتحرك وحدها. تمنح 10 نقاط. لا نمو.' },
+      BOMB:     { name: 'قنبلة',    desc: 'تحوّل 5 قطع إلى عوائق. تمنح 10 نقاط.' },
+      OBSTACLE: { name: 'عائق',     desc: 'أُنشئ بالقنبلة. الاصطدام ينهي اللعبة.' }
+    }
+  }
+};
+
+// Returns the translated string for a top-level key in the current language.
+function t(key) {
+  const lang = TRANSLATIONS[getLang()] ?? TRANSLATIONS.en;
+  return lang[key] ?? TRANSLATIONS.en[key] ?? key;
+}
+
 // Server-integration seam: swap this function to use a real server response.
 // telemetry: TelemetryRecord[] — last ≤10 consumed cards (currently unused locally).
 function fetchNextCard(telemetry) {
@@ -395,37 +667,56 @@ class GameScene extends Phaser.Scene {
     this.cursors = this.input.keyboard.createCursorKeys();
     this.wasd    = this.input.keyboard.addKeys('W,A,S,D');
 
-    this.scoreTxt = this.add.text(12, HUD_H / 2, 'Pontos: 0', {
+    this.scoreTxt = this.add.text(12, HUD_H / 2, t('score') + ': 0', {
       fontFamily: '"Trebuchet MS", Arial',
       fontSize:   '22px',
       fontStyle:  'bold',
       color:      '#ffffff'
     }).setOrigin(0, 0.5);
 
-    this.bestTxt = this.add.text(CANVAS_W - 100, HUD_H / 2, 'Melhor: 0', {
+    this.bestTxt = this.add.text(CANVAS_W - 100, HUD_H / 2, t('best') + ': 0', {
       fontFamily: '"Trebuchet MS", Arial',
       fontSize:   '22px',
       fontStyle:  'bold',
       color:      '#ffeb3b'
     }).setOrigin(1, 0.5);
 
-    // T003 — mute toggle button in HUD
-    const muteTxt = this.add.text(CANVAS_W - 52, HUD_H / 2, isMuted() ? '🔇' : '🔊', {
+    // BGM toggle button
+    // Note: this.music is assigned later in create(); clicking before assignment is impossible
+    // because Phaser pointer events only fire after create() returns.
+    const bgmBtn = this.add.text(CANVAS_W - 76, HUD_H / 2, isMuted() ? '🔇' : '🔊', {
       fontFamily: '"Trebuchet MS", Arial',
       fontSize:   '22px',
       color:      '#ffffff'
     }).setOrigin(0.5)
       .setInteractive({ useHandCursor: true })
-      .on('pointerover', () => muteTxt.setScale(1.15))
-      .on('pointerout',  () => muteTxt.setScale(1.0))
+      .on('pointerover', () => bgmBtn.setScale(1.15))
+      .on('pointerout',  () => bgmBtn.setScale(1.0))
       .on('pointerdown', () => {
-        muteTxt.setScale(0.9);
+        bgmBtn.setScale(0.9);
         const nowMuted = !isMuted();
         setMutePref(nowMuted);
-        this.sound.setMute(nowMuted);
-        muteTxt.setText(nowMuted ? '🔇' : '🔊');
+        this.music.setMute(nowMuted);
+        bgmBtn.setText(nowMuted ? '🔇' : '🔊');
       })
-      .on('pointerup', () => muteTxt.setScale(1.0));
+      .on('pointerup', () => bgmBtn.setScale(1.0));
+
+    // SFX toggle button
+    const sfxBtn = this.add.text(CANVAS_W - 36, HUD_H / 2, isSfxMuted() ? '🔕' : '🔔', {
+      fontFamily: '"Trebuchet MS", Arial',
+      fontSize:   '22px',
+      color:      '#ffffff'
+    }).setOrigin(0.5)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerover', () => sfxBtn.setScale(1.15))
+      .on('pointerout',  () => sfxBtn.setScale(1.0))
+      .on('pointerdown', () => {
+        sfxBtn.setScale(0.9);
+        const nowSfxMuted = !isSfxMuted();
+        setSfxMutePref(nowSfxMuted);
+        sfxBtn.setText(nowSfxMuted ? '🔕' : '🔔');
+      })
+      .on('pointerup', () => sfxBtn.setScale(1.0));
 
     this.cardStripGfx   = this.add.graphics();
     this.cardStripTexts = [];
@@ -437,7 +728,9 @@ class GameScene extends Phaser.Scene {
 
     // T004 — init background music
     this.music = this.sound.add('bgm', { loop: true, volume: 0.5 });
-    this.sound.setMute(isMuted());
+    // Persistence: isMuted() and isSfxMuted() are read from localStorage on every create() call,
+    // so both BGM and SFX preferences survive page reload automatically — no extra code needed.
+    this.music.setMute(isMuted());
     this.musicStarted = false;
 
     // T005 — handle browser autoplay policy: play on first audio unlock
@@ -454,6 +747,25 @@ class GameScene extends Phaser.Scene {
     }
 
     this.restartTick(TICK_BASE);
+
+    // Mobile swipe controls
+    this._swipeStart = null;
+    this.input.on('pointerdown', (p) => {
+      this._swipeStart = { x: p.x, y: p.y };
+    });
+    this.input.on('pointerup', (p) => {
+      if (!this._swipeStart) return;
+      const dx    = p.x - this._swipeStart.x;
+      const dy    = p.y - this._swipeStart.y;
+      const absDx = Math.abs(dx);
+      const absDy = Math.abs(dy);
+      this._swipeStart = null;
+      if (Math.max(absDx, absDy) < 30) return; // too short — ignore
+      const dir = absDx > absDy
+        ? (dx > 0 ? DIRS.RIGHT : DIRS.LEFT)
+        : (dy > 0 ? DIRS.DOWN  : DIRS.UP);
+      if (dir !== OPPOSITES.get(this.state.dir)) this.state.nextDir = dir;
+    });
   }
 
   // T008 — buffer directional input
@@ -564,16 +876,28 @@ class GameScene extends Phaser.Scene {
     });
 
     // Snake body (all segments except head)
-    gfx.fillStyle(C_SNAKE_BODY, 1);
-    for (let i = 1; i < state.snake.length; i++) {
-      const s = state.snake[i];
-      gfx.fillRoundedRect(s.x * CELL + 2, HUD_H + s.y * CELL + 2, CELL - 4, CELL - 4, 4);
+    if (state.rushActive) {
+      const pulse = 0.7 + 0.3 * Math.abs(Math.sin(this.time.now / 160));
+      gfx.fillStyle(0xaa00ff, pulse);
+      for (let i = 1; i < state.snake.length; i++) {
+        const s = state.snake[i];
+        gfx.fillRoundedRect(s.x * CELL + 2, HUD_H + s.y * CELL + 2, CELL - 4, CELL - 4, 4);
+      }
+      // Snake head (rushed)
+      const head = state.snake[0];
+      gfx.fillStyle(0xcc44ff, 1);
+      gfx.fillRoundedRect(head.x * CELL + 1, HUD_H + head.y * CELL + 1, CELL - 2, CELL - 2, 6);
+    } else {
+      gfx.fillStyle(C_SNAKE_BODY, 1);
+      for (let i = 1; i < state.snake.length; i++) {
+        const s = state.snake[i];
+        gfx.fillRoundedRect(s.x * CELL + 2, HUD_H + s.y * CELL + 2, CELL - 4, CELL - 4, 4);
+      }
+      // Snake head (normal)
+      const head = state.snake[0];
+      gfx.fillStyle(C_SNAKE_HEAD, 1);
+      gfx.fillRoundedRect(head.x * CELL + 1, HUD_H + head.y * CELL + 1, CELL - 2, CELL - 2, 6);
     }
-
-    // Snake head
-    const head = state.snake[0];
-    gfx.fillStyle(C_SNAKE_HEAD, 1);
-    gfx.fillRoundedRect(head.x * CELL + 1, HUD_H + head.y * CELL + 1, CELL - 2, CELL - 2, 6);
   }
 
   // T015 — restart the tick timer at a new delay, incrementing tickGen
@@ -607,8 +931,8 @@ class GameScene extends Phaser.Scene {
 
   // T017 — refresh HUD score & personal best texts
   updateHUD() {
-    this.scoreTxt.setText('Pontos: ' + this.state.score);
-    this.bestTxt.setText('Melhor: ' + this.state.personalBest);
+    this.scoreTxt.setText(t('score') + ': ' + this.state.score);
+    this.bestTxt.setText(t('best') + ': ' + this.state.personalBest);
   }
 
   // ── Growth & shrink ─────────────────────────────────────────
@@ -621,7 +945,31 @@ class GameScene extends Phaser.Scene {
   // T017 — remove up to n tail segments (never removes the head)
   shrinkSnake(n) {
     const remove = Math.min(n, this.state.snake.length - 1);
-    if (remove > 0) this.state.snake.splice(this.state.snake.length - remove, remove);
+    if (remove > 0) {
+      const removed = this.state.snake.splice(this.state.snake.length - remove, remove);
+      this.spawnGhosts(removed);
+    }
+  }
+
+  // 007 — spawn fading ghost rectangles at positions of removed segments
+  spawnGhosts(segments) {
+    for (const { x, y } of segments) {
+      const rect = this.add.rectangle(
+        x * CELL + CELL / 2,
+        HUD_H + y * CELL + CELL / 2,
+        CELL - 4,
+        CELL - 4,
+        C_SNAKE_BODY
+      );
+      rect.setDepth(1);
+      this.tweens.add({
+        targets:    rect,
+        alpha:      0,
+        duration:   500,
+        ease:       'Sine.Out',
+        onComplete: () => rect.destroy()
+      });
+    }
   }
 
   // ── Food effects ────────────────────────────────────────────
@@ -670,11 +1018,11 @@ class GameScene extends Phaser.Scene {
   applyFoodEffect(food) {
     const state = this.state;
     switch (food.type) {
-      case FOOD_TYPES.STANDARD: state.growthRemaining++; state.score++;    this.sound.play('sfx_eat_standard', { volume: 0.7 }); break;
-      case FOOD_TYPES.PENTA:    this.growSnake(5);       state.score += 5; this.sound.play('sfx_eat_penta',    { volume: 0.8 }); break;
-      case FOOD_TYPES.RUSH:     this.shrinkSnake(5);  this.activateRush();  this.sound.play('sfx_eat_rush',     { volume: 0.8 }); break;
-      case FOOD_TYPES.STAR:     state.score += 10;                          this.sound.play('sfx_eat_star',     { volume: 0.8 }); break;
-      case FOOD_TYPES.BOMB:     this.bombEffect();                          this.sound.play('sfx_eat_bomb',     { volume: 0.9 }); break;
+      case FOOD_TYPES.STANDARD: state.growthRemaining++; state.score++;    if (!isSfxMuted()) this.sound.play('sfx_eat_standard', { volume: 0.7 }); break;
+      case FOOD_TYPES.PENTA:    this.growSnake(5);       state.score += 5; if (!isSfxMuted()) this.sound.play('sfx_eat_penta',    { volume: 0.8 }); break;
+      case FOOD_TYPES.RUSH:     this.shrinkSnake(5);  this.activateRush();  if (!isSfxMuted()) this.sound.play('sfx_eat_rush',     { volume: 0.8 }); break;
+      case FOOD_TYPES.STAR:     state.score += 10;                          if (!isSfxMuted()) this.sound.play('sfx_eat_star',     { volume: 0.8 }); break;
+      case FOOD_TYPES.BOMB:     this.bombEffect();                          if (!isSfxMuted()) this.sound.play('sfx_eat_bomb',     { volume: 0.9 }); break;
     }
     this.updateHUD();
     this.updateSpeed();
@@ -802,8 +1150,8 @@ class GameScene extends Phaser.Scene {
 
   // T029 — game over: cleanup timers/managers, red flash, transition
   gameOver() {
-    // T015 — collision sound effect
-    this.sound.play('sfx_collision', { volume: 1.0 });
+    // T015 — collision sound effect (respects SFX mute preference)
+    if (!isSfxMuted()) this.sound.play('sfx_collision', { volume: 1.0 });
     this.state.tickRef.remove(false);
     this._cleanupRound();
     const overlay = this.add.rectangle(CANVAS_W / 2, CANVAS_H / 2, CANVAS_W, CANVAS_H, 0xff0000, 0);
@@ -860,7 +1208,7 @@ class GameOverScene extends Phaser.Scene {
     this.add.rectangle(CANVAS_W / 2, CANVAS_H / 2, CANVAS_W, CANVAS_H, 0x000000, 0.82);
 
     // Title
-    const titleText  = data.won ? '🏆 VOCÊ VENCEU!' : '💥 FIM DE JOGO!';
+    const titleText  = data.won ? t('won') : t('lost');
     const titleColor = data.won ? '#ffd700' : '#ff5252';
     this.add.text(CANVAS_W / 2, CANVAS_H * 0.28, titleText, {
       fontFamily: '"Trebuchet MS", Arial',
@@ -870,7 +1218,7 @@ class GameOverScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     // Final score
-    this.add.text(CANVAS_W / 2, CANVAS_H * 0.45, 'Pontuação: ' + data.score, {
+    this.add.text(CANVAS_W / 2, CANVAS_H * 0.45, t('scoreLabel') + ': ' + data.score, {
       fontFamily: '"Trebuchet MS", Arial',
       fontSize:   '32px',
       fontStyle:  'bold',
@@ -878,7 +1226,7 @@ class GameOverScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     // T019 — personal best
-    this.add.text(CANVAS_W / 2, CANVAS_H * 0.54, '⭐ Melhor: ' + data.personalBest, {
+    this.add.text(CANVAS_W / 2, CANVAS_H * 0.54, t('bestLabel') + ': ' + data.personalBest, {
       fontFamily: '"Trebuchet MS", Arial',
       fontSize:   '26px',
       fontStyle:  'bold',
@@ -886,7 +1234,7 @@ class GameOverScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     if (data.score > 0 && data.score >= data.personalBest) {
-      const rec = this.add.text(CANVAS_W / 2, CANVAS_H * 0.63, '🏆 Novo Recorde!', {
+      const rec = this.add.text(CANVAS_W / 2, CANVAS_H * 0.63, t('newRecord'), {
         fontFamily: '"Trebuchet MS", Arial',
         fontSize:   '26px',
         fontStyle:  'bold',
@@ -905,7 +1253,7 @@ class GameOverScene extends Phaser.Scene {
     // Play Again button
     const btn = makeButton(
       this, CANVAS_W / 2, CANVAS_H * 0.72,
-      '🎮 JOGAR NOVAMENTE', 0x00c853, '#ffffff', 260, 64
+      t('playAgain'), 0x00c853, '#ffffff', 260, 64
     );
 
     // Guard against double-trigger from button + keyboard
@@ -955,7 +1303,7 @@ class MenuScene extends Phaser.Scene {
     });
 
     // T021 — instruction text
-    this.add.text(CANVAS_W / 2, CANVAS_H * 0.42, 'Use  ↑↓←→  ou  W A S D', {
+    this.add.text(CANVAS_W / 2, CANVAS_H * 0.42, t('controls'), {
       fontFamily: '"Trebuchet MS", Arial',
       fontSize:   '20px',
       color:      '#cccccc'
@@ -964,7 +1312,7 @@ class MenuScene extends Phaser.Scene {
     // T021 — JOGAR button
     const btn = makeButton(
       this, CANVAS_W / 2, CANVAS_H * 0.58,
-      '🎮  JOGAR', 0x00c853, '#ffffff', 220, 64
+      t('play'), 0x00c853, '#ffffff', 220, 64
     );
 
     // Guard against double-trigger
@@ -983,7 +1331,7 @@ class MenuScene extends Phaser.Scene {
 
     // T023 — personal best display (only when > 0)
     if (this.personalBest > 0) {
-      this.add.text(CANVAS_W / 2, CANVAS_H * 0.75, '⭐ Melhor: ' + this.personalBest, {
+      this.add.text(CANVAS_W / 2, CANVAS_H * 0.75, t('bestLabel') + ': ' + this.personalBest, {
         fontFamily: '"Trebuchet MS", Arial',
         fontSize:   '22px',
         fontStyle:  'bold',
@@ -1010,26 +1358,62 @@ class LegendScene extends Phaser.Scene {
     bg.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
     // Title
-    this.add.text(CANVAS_W / 2, 18, 'Legenda', {
+    this.add.text(20, 32, t('legendTitle'), {
       fontFamily: '"Trebuchet MS", Arial',
       fontSize:   '28px',
       fontStyle:  'bold',
       color:      '#00e676'
-    }).setOrigin(0.5);
+    }).setOrigin(0, 0.5);
 
-    // Entry definitions
+    // BGM toggle button (top-right, same row as title)
+    // NOTE: works because scene.start() stops GameScene; update to call music API if scene.launch() is ever used.
+    const lgBgmBtn = this.add.text(CANVAS_W - 76, 32, isMuted() ? '🔇' : '🔊', {
+      fontFamily: '"Trebuchet MS", Arial',
+      fontSize:   '22px',
+      color:      '#ffffff'
+    }).setOrigin(0.5)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerover', () => lgBgmBtn.setScale(1.15))
+      .on('pointerout',  () => lgBgmBtn.setScale(1.0))
+      .on('pointerdown', () => {
+        lgBgmBtn.setScale(0.9);
+        const nowMuted = !isMuted();
+        setMutePref(nowMuted);
+        lgBgmBtn.setText(nowMuted ? '🔇' : '🔊');
+      })
+      .on('pointerup', () => lgBgmBtn.setScale(1.0));
+
+    // SFX toggle button (top-right, same row as title)
+    const lgSfxBtn = this.add.text(CANVAS_W - 36, 32, isSfxMuted() ? '🔕' : '🔔', {
+      fontFamily: '"Trebuchet MS", Arial',
+      fontSize:   '22px',
+      color:      '#ffffff'
+    }).setOrigin(0.5)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerover', () => lgSfxBtn.setScale(1.15))
+      .on('pointerout',  () => lgSfxBtn.setScale(1.0))
+      .on('pointerdown', () => {
+        lgSfxBtn.setScale(0.9);
+        const nowSfxMuted = !isSfxMuted();
+        setSfxMutePref(nowSfxMuted);
+        lgSfxBtn.setText(nowSfxMuted ? '🔕' : '🔔');
+      })
+      .on('pointerup', () => lgSfxBtn.setScale(1.0));
+
+    // Entry definitions (translated)
+    const foodTr = (TRANSLATIONS[getLang()] ?? TRANSLATIONS.pt).food;
     const entries = [
-      { type: 'STANDARD', nome: 'Normal',  desc: 'Cresce 1 segmento e vale 1 ponto.' },
-      { type: 'PENTA',    nome: 'Penta',   desc: 'Cresce 5 segmentos e vale 5 pontos \u2014 raro!' },
-      { type: 'RUSH',     nome: 'Turbo',   desc: 'Corta 5 segmentos e acelera por 5 segundos.' },
-      { type: 'STAR',     nome: 'Estrela',   desc: 'Move-se sozinha. Vale 10 pontos. N\u00e3o cresce.' },
-      { type: 'BOMB',     nome: 'Bomba',     desc: 'Vira 5 segmentos em obst\u00e1culos. Vale 10 pontos.' },
-      { type: 'OBSTACLE', nome: 'Obst\u00e1culo', desc: 'Criado pela Bomba. Colis\u00e3o termina o jogo.' }
+      { type: 'STANDARD', nome: foodTr.STANDARD.name, desc: foodTr.STANDARD.desc },
+      { type: 'PENTA',    nome: foodTr.PENTA.name,    desc: foodTr.PENTA.desc    },
+      { type: 'RUSH',     nome: foodTr.RUSH.name,      desc: foodTr.RUSH.desc     },
+      { type: 'STAR',     nome: foodTr.STAR.name,      desc: foodTr.STAR.desc     },
+      { type: 'BOMB',     nome: foodTr.BOMB.name,      desc: foodTr.BOMB.desc     },
+      { type: 'OBSTACLE', nome: foodTr.OBSTACLE.name,  desc: foodTr.OBSTACLE.desc }
     ];
 
     const sepGfx = this.add.graphics();  // separators always full opacity
     const ROW_H   = 64;
-    const Y_START = 40;
+    const Y_START = 58;
     const specialEnabled = isSpecialFoodsEnabled();
 
     entries.forEach((entry, i) => {
@@ -1081,16 +1465,40 @@ class LegendScene extends Phaser.Scene {
     });
 
     // Toggle button — disable / re-enable special foods
-    const toggleLabel = specialEnabled ? 'Desativar Especiais' : 'Ativar Especiais';
-    const toggleColor = specialEnabled ? 0xe53935 : 0x43a047;
-    const toggleBtn = makeButton(this, CANVAS_W / 2, 470, toggleLabel, toggleColor, '#ffffff', 240, 52);
+    const toggleLabel = specialEnabled ? t('disableSpecials') : t('enableSpecials');
+    const toggleColor = specialEnabled ? 0x757575 : 0x43a047;
+    const toggleBtn = makeButton(this, CANVAS_W / 2, 490, toggleLabel, toggleColor, '#ffffff', 280, 52);
     toggleBtn.gfx.on('pointerup', () => {
       setSpecialFoodsEnabled(!specialEnabled);
       this.scene.restart();
     });
 
+    // Language selector — top-right, left of audio buttons
+    const _curLang = getLang();
+    const _langOpts = [
+      { code: 'pt', label: 'Português' },
+      { code: 'en', label: 'English' },
+      { code: 'es', label: 'Español' },
+      { code: 'de', label: 'Deutsch' },
+      { code: 'fr', label: 'Français' },
+      { code: 'ru', label: 'Русский' },
+      { code: 'ja', label: '日本語' },
+      { code: 'zh', label: '中文' },
+      { code: 'hi', label: 'हिन्दी' },
+      { code: 'ar', label: 'العربية' }
+    ].map(l => `<option value="${l.code}"${l.code === _curLang ? ' selected' : ''}>${l.label}</option>`).join('');
+
+    const _langSel = this.add.dom(CANVAS_W - 165, 32).createFromHTML(
+      `<select style="background:#0f3460;color:#fff;border:1px solid #00e676;border-radius:6px;padding:2px 6px;font-size:13px;font-family:'Trebuchet MS',Arial,sans-serif;cursor:pointer;outline:none;min-width:110px;">${_langOpts}</select>`
+    );
+    _langSel.addListener('change');
+    _langSel.on('change', (evt) => {
+      setLang(evt.target.value);
+      this.scene.restart();
+    });
+
     // Jogar button — starts the game
-    const playBtn = makeButton(this, CANVAS_W / 2, 590, '\ud83c\udfae  JOGAR', 0x00c853, '#ffffff', 220, 56);
+    const playBtn = makeButton(this, CANVAS_W / 2, 570, t('play'), 0x00c853, '#ffffff', 280, 56);
     let going = false;
     const startGame = () => {
       if (going) return;
@@ -1109,12 +1517,23 @@ class LegendScene extends Phaser.Scene {
 // ============================================================
 // T024 — PHASER GAME BOOTSTRAP
 // ============================================================
+const isMobile = window.matchMedia('(pointer: coarse)').matches;
+
 const config = {
   type:            Phaser.AUTO,
   width:           CANVAS_W,
   height:          CANVAS_H,
   backgroundColor: '#1a1a2e',
   parent:          document.body,
+  dom: {
+    createContainer: true  // required for this.add.dom() language selector in LegendScene
+  },
+  ...(isMobile ? {
+    scale: {
+      mode:       Phaser.Scale.FIT,
+      autoCenter: Phaser.Scale.CENTER_BOTH
+    }
+  } : {}),
   scene:           [MenuScene, GameScene, GameOverScene, LegendScene]
 };
 
