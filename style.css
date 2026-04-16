@@ -19,6 +19,15 @@ body {
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 50%, rgba(0, 0, 0, 0.4) 100%);
+  z-index: 9999;
+}
+
 #game {
   position: relative;
   max-width: 100%;
@@ -39,5 +48,9 @@ canvas {
   }
   #game {
     max-width: 94%;
+  }
+  canvas {
+    border-radius: 8px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5), 0 0 20px rgba(0, 230, 118, 0.15);
   }
 }
