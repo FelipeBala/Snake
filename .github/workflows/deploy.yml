@@ -25,7 +25,7 @@ jobs:
           S3_BUCKET: ${{ secrets.S3_BUCKET }}
         run: |
           BUCKET=$(echo "$S3_BUCKET" | tr -d '[:space:]')
-          aws s3 sync . "s3://${BUCKET}/snake" \
+          aws s3 sync . "s3://${BUCKET}" \
                 --exclude ".git/*" \
                 --exclude ".github/*" \
                 --exclude "specs/*" \
