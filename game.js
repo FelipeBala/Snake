@@ -6,19 +6,19 @@ const HUD_H        = 40;   // height reserved above grid
 const CARD_STRIP_H = 32;   // card strip below grid
 
 // Mobile: non-square grid fills both screen axes.
-// Portrait  → CELL from width  (fix 25 columns), ROWS fill remaining height.
-// Landscape → CELL from height (fix 25 rows),    COLS fill remaining width.
+// Portrait  → CELL from width  (fix 13 columns), ROWS fill remaining height.
+// Landscape → CELL from height (fix 13 rows),    COLS fill remaining width.
 const _portrait    = isMobile && (window.innerWidth <= window.innerHeight);
 const CELL         = isMobile
   ? (_portrait
-      ? Math.floor(window.innerWidth / 25)
-      : Math.floor((window.innerHeight - HUD_H - CARD_STRIP_H) / 25))
+      ? Math.floor(window.innerWidth / 13)
+      : Math.floor((window.innerHeight - HUD_H - CARD_STRIP_H) / 13))
   : 28;
 const COLS         = isMobile
-  ? (_portrait ? 25 : Math.floor(window.innerWidth / CELL))
+  ? (_portrait ? 13 : Math.floor(window.innerWidth / CELL))
   : 20;
 const ROWS         = isMobile
-  ? (_portrait ? Math.floor((window.innerHeight - HUD_H - CARD_STRIP_H) / CELL) : 25)
+  ? (_portrait ? Math.floor((window.innerHeight - HUD_H - CARD_STRIP_H) / CELL) : 13)
   : 20;
 const CANVAS_W     = COLS * CELL;
 const CANVAS_H     = HUD_H + ROWS * CELL + CARD_STRIP_H;
