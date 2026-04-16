@@ -37,4 +37,7 @@ canvas {
     align-items: flex-start;
     padding-top: max(env(safe-area-inset-top), 15vh);
   }
+  #game {
+    max-width: 94%;
+  }
 }
