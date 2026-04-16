@@ -35,6 +35,6 @@ canvas {
 @media (pointer: coarse) {
   body {
     align-items: flex-start;
-    padding-top: max(env(safe-area-inset-top), 2vh);
+    padding-top: max(env(safe-area-inset-top), 15vh);
   }
 }
