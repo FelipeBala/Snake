@@ -19,6 +19,11 @@ body {
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
+#game {
+  position: relative;
+  max-width: 100%;
+}
+
 canvas {
   border-radius: 12px;
   box-shadow: 0 0 40px rgba(0, 230, 118, 0.3);

@@ -1527,7 +1527,7 @@ const config = {
   width:           CANVAS_W,
   height:          CANVAS_H,
   backgroundColor: '#1a1a2e',
-  parent:          document.body,
+  parent:          'game',
   dom: {
     createContainer: true  // required for this.add.dom() language selector in LegendScene
   },
