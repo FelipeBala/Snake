@@ -857,17 +857,14 @@ class GameScene extends Phaser.Scene {
     }
 
     // Food collision — reverse loop so splicing doesn't skip items
+    let _eatenFood = null;
     for (let i = state.foods.length - 1; i >= 0; i--) {
       const f = state.foods[i];
       if (f.x === newHead.x && f.y === newHead.y) {
         if (f.starTimer) { f.starTimer.remove(true); f.starTimer = null; }
         state.foods.splice(i, 1);
-        this.applyFoodEffect(f);
-        // Temporarily include newHead in the snake so getFreeCells() (called
-        // inside onFoodConsumed → activateCard) never places food on this cell.
-        state.snake.unshift(newHead);
-        this.cardManager.onFoodConsumed(f);
-        state.snake.shift();  // remove the temp entry; normal unshift follows below
+        this.applyFoodEffect(f);   // may change growthRemaining / BOMB tail
+        _eatenFood = f;
         break;
       }
     }
@@ -879,6 +876,13 @@ class GameScene extends Phaser.Scene {
       state.snake.pop();
     }
     state.snake.unshift(newHead);
+
+    // Notify card manager AFTER the snake is fully updated so that
+    // getFreeCells() (called inside activateCard) sees the correct snake state
+    // and never places a new food on a cell occupied by the snake.
+    if (_eatenFood) {
+      this.cardManager.onFoodConsumed(_eatenFood);
+    }
 
     // Win check
     if (state.snake.length === COLS * ROWS) {
