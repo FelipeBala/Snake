@@ -43,14 +43,15 @@ canvas {
 
 @media (pointer: coarse) {
   body {
-    align-items: flex-start;
-    padding-top: max(env(safe-area-inset-top), 15vh);
+    align-items: center;
+    justify-content: center;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   }
   #game {
-    max-width: 94%;
+    max-width: 100%;
   }
   canvas {
-    border-radius: 8px;
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5), 0 0 20px rgba(0, 230, 118, 0.15);
+    border-radius: 0;
+    box-shadow: none;
   }
 }
