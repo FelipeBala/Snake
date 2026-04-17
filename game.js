@@ -2,6 +2,9 @@
 // SHARED CONSTANTS
 // ============================================================
 const isMobile     = window.matchMedia('(pointer: coarse)').matches;
+// Device pixel ratio — used on mobile to upscale the WebGL canvas backing store
+// to physical pixels while keeping game coordinates in CSS pixels.
+const DPR          = isMobile ? Math.min(window.devicePixelRatio || 1, 3) : 1;
 const HUD_H        = 40;   // height reserved above grid
 const CARD_STRIP_H = 32;   // card strip below grid
 
@@ -103,7 +106,8 @@ function makeButton(scene, cx, cy, label, bgColor, textColor = '#ffffff', w = 20
     fontFamily: '"Trebuchet MS", Arial',
     fontSize: '24px',
     fontStyle: 'bold',
-    color: textColor
+    color: textColor,
+    resolution: DPR
   }).setOrigin(0.5);
 
   // Hover / press tweens — both targets share the same pivot (cx, cy)
@@ -701,14 +705,16 @@ class GameScene extends Phaser.Scene {
       fontFamily: '"Trebuchet MS", Arial',
       fontSize:   '22px',
       fontStyle:  'bold',
-      color:      '#ffffff'
+      color:      '#ffffff',
+      resolution: DPR
     }).setOrigin(0, 0.5);
 
     this.bestTxt = this.add.text(CANVAS_W - 100, HUD_H / 2, t('best') + ': 0', {
       fontFamily: '"Trebuchet MS", Arial',
       fontSize:   '22px',
       fontStyle:  'bold',
-      color:      '#ffeb3b'
+      color:      '#ffeb3b',
+      resolution: DPR
     }).setOrigin(1, 0.5);
 
     // BGM toggle button
@@ -717,7 +723,8 @@ class GameScene extends Phaser.Scene {
     const bgmBtn = this.add.text(CANVAS_W - 76, HUD_H / 2, isMuted() ? '🔇' : '🔊', {
       fontFamily: '"Trebuchet MS", Arial',
       fontSize:   '22px',
-      color:      '#ffffff'
+      color:      '#ffffff',
+      resolution: DPR
     }).setOrigin(0.5)
       .setInteractive({ useHandCursor: true })
       .on('pointerover', () => bgmBtn.setScale(1.15))
@@ -735,7 +742,8 @@ class GameScene extends Phaser.Scene {
     const sfxBtn = this.add.text(CANVAS_W - 36, HUD_H / 2, isSfxMuted() ? '🔕' : '🔔', {
       fontFamily: '"Trebuchet MS", Arial',
       fontSize:   '22px',
-      color:      '#ffffff'
+      color:      '#ffffff',
+      resolution: DPR
     }).setOrigin(0.5)
       .setInteractive({ useHandCursor: true })
       .on('pointerover', () => sfxBtn.setScale(1.15))
@@ -855,7 +863,11 @@ class GameScene extends Phaser.Scene {
         if (f.starTimer) { f.starTimer.remove(true); f.starTimer = null; }
         state.foods.splice(i, 1);
         this.applyFoodEffect(f);
+        // Temporarily include newHead in the snake so getFreeCells() (called
+        // inside onFoodConsumed → activateCard) never places food on this cell.
+        state.snake.unshift(newHead);
         this.cardManager.onFoodConsumed(f);
+        state.snake.shift();  // remove the temp entry; normal unshift follows below
         break;
       }
     }
@@ -1162,7 +1174,8 @@ class GameScene extends Phaser.Scene {
       const txt = this.add.text(x + 16, textY, '\u00D7' + count, {
         fontFamily: 'Arial',
         fontSize:   '18px',
-        color:      '#ffffff'
+        color:      '#ffffff',
+        resolution: DPR
       }).setOrigin(0, 0.5);
       this.cardStripTexts.push(txt);
 
@@ -1251,7 +1264,8 @@ class GameOverScene extends Phaser.Scene {
       fontFamily: '"Trebuchet MS", Arial',
       fontSize:   '48px',
       fontStyle:  'bold',
-      color:      titleColor
+      color:      titleColor,
+      resolution: DPR
     }).setOrigin(0.5);
 
     // Final score
@@ -1259,7 +1273,8 @@ class GameOverScene extends Phaser.Scene {
       fontFamily: '"Trebuchet MS", Arial',
       fontSize:   '32px',
       fontStyle:  'bold',
-      color:      '#ffffff'
+      color:      '#ffffff',
+      resolution: DPR
     }).setOrigin(0.5);
 
     // T019 — personal best
@@ -1267,7 +1282,8 @@ class GameOverScene extends Phaser.Scene {
       fontFamily: '"Trebuchet MS", Arial',
       fontSize:   '26px',
       fontStyle:  'bold',
-      color:      '#ffeb3b'
+      color:      '#ffeb3b',
+      resolution: DPR
     }).setOrigin(0.5);
 
     if (data.score > 0 && data.score >= data.personalBest) {
@@ -1275,7 +1291,8 @@ class GameOverScene extends Phaser.Scene {
         fontFamily: '"Trebuchet MS", Arial',
         fontSize:   '26px',
         fontStyle:  'bold',
-        color:      '#ffd700'
+        color:      '#ffd700',
+        resolution: DPR
       }).setOrigin(0.5);
       this.tweens.add({
         targets:  rec,
@@ -1328,7 +1345,8 @@ class MenuScene extends Phaser.Scene {
       fontFamily: '"Trebuchet MS", Arial',
       fontSize:   '72px',
       fontStyle:  'bold',
-      color:      '#00e676'
+      color:      '#00e676',
+      resolution: DPR
     }).setOrigin(0.5);
     this.tweens.add({
       targets:  title,
@@ -1343,7 +1361,8 @@ class MenuScene extends Phaser.Scene {
     this.add.text(CANVAS_W / 2, CANVAS_H * 0.42, t('controls'), {
       fontFamily: '"Trebuchet MS", Arial',
       fontSize:   '20px',
-      color:      '#cccccc'
+      color:      '#cccccc',
+      resolution: DPR
     }).setOrigin(0.5);
 
     // T021 — JOGAR button
@@ -1372,7 +1391,8 @@ class MenuScene extends Phaser.Scene {
         fontFamily: '"Trebuchet MS", Arial',
         fontSize:   '22px',
         fontStyle:  'bold',
-        color:      '#ffeb3b'
+        color:      '#ffeb3b',
+        resolution: DPR
       }).setOrigin(0.5);
     }
   }
@@ -1399,7 +1419,8 @@ class LegendScene extends Phaser.Scene {
       fontFamily: '"Trebuchet MS", Arial',
       fontSize:   '28px',
       fontStyle:  'bold',
-      color:      '#00e676'
+      color:      '#00e676',
+      resolution: DPR
     }).setOrigin(0, 0.5);
 
     // BGM toggle button (top-right, same row as title)
@@ -1407,7 +1428,8 @@ class LegendScene extends Phaser.Scene {
     const lgBgmBtn = this.add.text(CANVAS_W - 76, 32, isMuted() ? '🔇' : '🔊', {
       fontFamily: '"Trebuchet MS", Arial',
       fontSize:   '22px',
-      color:      '#ffffff'
+      color:      '#ffffff',
+      resolution: DPR
     }).setOrigin(0.5)
       .setInteractive({ useHandCursor: true })
       .on('pointerover', () => lgBgmBtn.setScale(1.15))
@@ -1424,7 +1446,8 @@ class LegendScene extends Phaser.Scene {
     const lgSfxBtn = this.add.text(CANVAS_W - 36, 32, isSfxMuted() ? '🔕' : '🔔', {
       fontFamily: '"Trebuchet MS", Arial',
       fontSize:   '22px',
-      color:      '#ffffff'
+      color:      '#ffffff',
+      resolution: DPR
     }).setOrigin(0.5)
       .setInteractive({ useHandCursor: true })
       .on('pointerover', () => lgSfxBtn.setScale(1.15))
@@ -1483,7 +1506,8 @@ class LegendScene extends Phaser.Scene {
         fontSize:   _nameFsz,
         fontStyle:  'bold',
         color:      '#ffffff',
-        wordWrap:   { width: _textW }
+        wordWrap:   { width: _textW },
+        resolution: DPR
       });
 
       // Description
@@ -1491,7 +1515,8 @@ class LegendScene extends Phaser.Scene {
         fontFamily: '"Trebuchet MS", Arial',
         fontSize:   _descFsz,
         color:      '#cccccc',
-        wordWrap:   { width: _textW }
+        wordWrap:   { width: _textW },
+        resolution: DPR
       });
 
       // Separator (skip after last row)
