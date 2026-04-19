@@ -24,6 +24,9 @@ desktop.ini
 
 lib/
 audio/
+marketing/
 .specify/
 .github/agents/
 .github/prompts/
+
+*.zip
