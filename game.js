@@ -1,13 +1,30 @@
 // ============================================================
 // SHARED CONSTANTS
 // ============================================================
-const CELL            = 28;   // grid cell size in pixels
-const COLS            = 20;   // grid columns
-const ROWS            = 20;   // grid rows
-const CANVAS_W        = 560;  // COLS × CELL
-const HUD_H           = 40;   // height reserved above grid
-const CARD_STRIP_H    = 32;   // card strip below grid
-const CANVAS_H        = HUD_H + ROWS * CELL + CARD_STRIP_H;  // 632
+const isMobile     = window.matchMedia('(pointer: coarse)').matches;
+// Device pixel ratio — used on mobile to upscale the WebGL canvas backing store
+// to physical pixels while keeping game coordinates in CSS pixels.
+const DPR          = isMobile ? Math.min(window.devicePixelRatio || 1, 3) : 1;
+const HUD_H        = 40;   // height reserved above grid
+const CARD_STRIP_H = 32;   // card strip below grid
+
+// Mobile: non-square grid fills both screen axes.
+// Portrait  → CELL from width  (fix 13 columns), ROWS fill remaining height.
+// Landscape → CELL from height (fix 13 rows),    COLS fill remaining width.
+const _portrait    = isMobile && (window.innerWidth <= window.innerHeight);
+const CELL         = isMobile
+  ? (_portrait
+      ? Math.floor(window.innerWidth / 13)
+      : Math.floor((window.innerHeight - HUD_H - CARD_STRIP_H) / 13))
+  : 28;
+const COLS         = isMobile
+  ? (_portrait ? 13 : Math.floor(window.innerWidth / CELL))
+  : 20;
+const ROWS         = isMobile
+  ? (_portrait ? Math.floor((window.innerHeight - HUD_H - CARD_STRIP_H) / CELL) : 13)
+  : 20;
+const CANVAS_W     = COLS * CELL;
+const CANVAS_H     = HUD_H + ROWS * CELL + CARD_STRIP_H;
 
 const TICK_BASE         = 150;  // initial tick delay (ms)
 const TICK_MIN          = 80;   // minimum tick delay (ms)
@@ -89,7 +106,8 @@ function makeButton(scene, cx, cy, label, bgColor, textColor = '#ffffff', w = 20
     fontFamily: '"Trebuchet MS", Arial',
     fontSize: '24px',
     fontStyle: 'bold',
-    color: textColor
+    color: textColor,
+    resolution: DPR
   }).setOrigin(0.5);
 
   // Hover / press tweens — both targets share the same pivot (cx, cy)
@@ -115,61 +133,72 @@ function makeButton(scene, cx, cy, label, bgColor, textColor = '#ffffff', w = 20
 
 // Draw a food item centered at pixel (cx, cy) on the shared Graphics layer.
 function drawFoodShape(gfx, food, cx, cy) {
+  const S = CELL / 28; // scale factor relative to base CELL=28
   gfx.fillStyle(FOOD_COLORS[food.type], 1);
   switch (food.type) {
-    case FOOD_TYPES.STANDARD:
-      gfx.fillRoundedRect(cx - 11, cy - 11, 22, 22, 5);
+    case FOOD_TYPES.STANDARD: {
+      const hs = Math.round(11 * S);
+      gfx.fillRoundedRect(cx - hs, cy - hs, hs * 2, hs * 2, Math.max(2, Math.round(5 * S)));
       break;
+    }
     case FOOD_TYPES.PENTA: {
-      // 5-point star — 10 vertices, alternating r_outer=12 / r_inner=6
+      // 5-point star — 10 vertices, alternating r_outer / r_inner
+      const rO = Math.round(12 * S), rI = Math.round(6 * S);
       const pts = [];
       for (let i = 0; i < 10; i++) {
         const angle = (Math.PI / 5) * i - Math.PI / 2;
-        const r = i % 2 === 0 ? 12 : 6;
+        const r = i % 2 === 0 ? rO : rI;
         pts.push({ x: cx + Math.cos(angle) * r, y: cy + Math.sin(angle) * r });
       }
       gfx.fillPoints(pts, true, true);
       break;
     }
-    case FOOD_TYPES.RUSH:
-      // Wide flat pill (icon from former TRIM)
-      gfx.fillRoundedRect(cx - 12, cy - 5, 24, 10, 5);
+    case FOOD_TYPES.RUSH: {
+      // Wide flat pill
+      const hw = Math.round(12 * S), hh = Math.max(2, Math.round(5 * S));
+      gfx.fillRoundedRect(cx - hw, cy - hh, hw * 2, hh * 2, Math.max(2, Math.round(5 * S)));
       break;
+    }
     case FOOD_TYPES.STAR: {
-      // 4-point star — 8 vertices, r_outer=11 / r_inner=5
+      // 4-point star — 8 vertices, r_outer / r_inner
       // Skip draw on blink-off frames (T034 visibility toggle)
       if (food.visible === false) break;
+      const rO = Math.round(11 * S), rI = Math.max(2, Math.round(5 * S));
       const pts = [];
       for (let i = 0; i < 8; i++) {
         const angle = (Math.PI / 4) * i - Math.PI / 2;
-        const r = i % 2 === 0 ? 11 : 5;
+        const r = i % 2 === 0 ? rO : rI;
         pts.push({ x: cx + Math.cos(angle) * r, y: cy + Math.sin(angle) * r });
       }
       gfx.fillPoints(pts, true, true);
       break;
     }
-    case FOOD_TYPES.BOMB:
+    case FOOD_TYPES.BOMB: {
       // Dark red circle with X crosshair
-      gfx.fillCircle(cx, cy, 10);
-      gfx.lineStyle(2, 0x7f0000, 1);
-      gfx.lineBetween(cx - 6, cy - 6, cx + 6, cy + 6);
-      gfx.lineBetween(cx + 6, cy - 6, cx - 6, cy + 6);
+      const br = Math.round(10 * S), bl = Math.round(6 * S);
+      gfx.fillCircle(cx, cy, br);
+      gfx.lineStyle(Math.max(1, Math.round(2 * S)), 0x7f0000, 1);
+      gfx.lineBetween(cx - bl, cy - bl, cx + bl, cy + bl);
+      gfx.lineBetween(cx + bl, cy - bl, cx - bl, cy + bl);
       break;
+    }
   }
 }
 
 // Draw a FOOD-BOMB obstacle tile at grid cell (obs.x, obs.y).
 function drawObstacle(gfx, obs) {
+  const S = CELL / 28;
+  const c = Math.max(2, Math.round(4 * S));
   gfx.fillStyle(C_OBSTACLE, 1);
   gfx.fillRect(obs.x * CELL, HUD_H + obs.y * CELL, CELL, CELL);
-  gfx.lineStyle(2, 0x263238, 1);
+  gfx.lineStyle(Math.max(1, Math.round(2 * S)), 0x263238, 1);
   gfx.lineBetween(
-    obs.x * CELL + 4,        HUD_H + obs.y * CELL + 4,
-    obs.x * CELL + CELL - 4, HUD_H + obs.y * CELL + CELL - 4
+    obs.x * CELL + c,        HUD_H + obs.y * CELL + c,
+    obs.x * CELL + CELL - c, HUD_H + obs.y * CELL + CELL - c
   );
   gfx.lineBetween(
-    obs.x * CELL + CELL - 4, HUD_H + obs.y * CELL + 4,
-    obs.x * CELL + 4,        HUD_H + obs.y * CELL + CELL - 4
+    obs.x * CELL + CELL - c, HUD_H + obs.y * CELL + c,
+    obs.x * CELL + c,        HUD_H + obs.y * CELL + CELL - c
   );
 }
 
@@ -647,7 +676,11 @@ class GameScene extends Phaser.Scene {
   // T025 — scene setup
   create(data) {
     this.state = {
-      snake:           [{ x: 12, y: 10 }, { x: 11, y: 10 }, { x: 10, y: 10 }],
+      snake:           [
+        { x: Math.floor(COLS / 2) + 2, y: Math.floor(ROWS / 2) },
+        { x: Math.floor(COLS / 2) + 1, y: Math.floor(ROWS / 2) },
+        { x: Math.floor(COLS / 2),     y: Math.floor(ROWS / 2) }
+      ],
       dir:             DIRS.RIGHT,
       nextDir:         DIRS.RIGHT,
       foods:           [],
@@ -672,14 +705,16 @@ class GameScene extends Phaser.Scene {
       fontFamily: '"Trebuchet MS", Arial',
       fontSize:   '22px',
       fontStyle:  'bold',
-      color:      '#ffffff'
+      color:      '#ffffff',
+      resolution: DPR
     }).setOrigin(0, 0.5);
 
     this.bestTxt = this.add.text(CANVAS_W - 100, HUD_H / 2, t('best') + ': 0', {
       fontFamily: '"Trebuchet MS", Arial',
       fontSize:   '22px',
       fontStyle:  'bold',
-      color:      '#ffeb3b'
+      color:      '#ffeb3b',
+      resolution: DPR
     }).setOrigin(1, 0.5);
 
     // BGM toggle button
@@ -688,7 +723,8 @@ class GameScene extends Phaser.Scene {
     const bgmBtn = this.add.text(CANVAS_W - 76, HUD_H / 2, isMuted() ? '🔇' : '🔊', {
       fontFamily: '"Trebuchet MS", Arial',
       fontSize:   '22px',
-      color:      '#ffffff'
+      color:      '#ffffff',
+      resolution: DPR
     }).setOrigin(0.5)
       .setInteractive({ useHandCursor: true })
       .on('pointerover', () => bgmBtn.setScale(1.15))
@@ -706,7 +742,8 @@ class GameScene extends Phaser.Scene {
     const sfxBtn = this.add.text(CANVAS_W - 36, HUD_H / 2, isSfxMuted() ? '🔕' : '🔔', {
       fontFamily: '"Trebuchet MS", Arial',
       fontSize:   '22px',
-      color:      '#ffffff'
+      color:      '#ffffff',
+      resolution: DPR
     }).setOrigin(0.5)
       .setInteractive({ useHandCursor: true })
       .on('pointerover', () => sfxBtn.setScale(1.15))
@@ -820,13 +857,14 @@ class GameScene extends Phaser.Scene {
     }
 
     // Food collision — reverse loop so splicing doesn't skip items
+    let _eatenFood = null;
     for (let i = state.foods.length - 1; i >= 0; i--) {
       const f = state.foods[i];
       if (f.x === newHead.x && f.y === newHead.y) {
         if (f.starTimer) { f.starTimer.remove(true); f.starTimer = null; }
         state.foods.splice(i, 1);
-        this.applyFoodEffect(f);
-        this.cardManager.onFoodConsumed(f);
+        this.applyFoodEffect(f);   // may change growthRemaining / BOMB tail
+        _eatenFood = f;
         break;
       }
     }
@@ -838,6 +876,13 @@ class GameScene extends Phaser.Scene {
       state.snake.pop();
     }
     state.snake.unshift(newHead);
+
+    // Notify card manager AFTER the snake is fully updated so that
+    // getFreeCells() (called inside activateCard) sees the correct snake state
+    // and never places a new food on a cell occupied by the snake.
+    if (_eatenFood) {
+      this.cardManager.onFoodConsumed(_eatenFood);
+    }
 
     // Win check
     if (state.snake.length === COLS * ROWS) {
@@ -877,27 +922,31 @@ class GameScene extends Phaser.Scene {
     });
 
     // Snake body (all segments except head)
+    const _bPad = Math.max(1, Math.round(CELL * 0.08));
+    const _bR   = Math.max(1, Math.round(CELL * 0.14));
+    const _hPad = Math.max(1, Math.round(CELL * 0.04));
+    const _hR   = Math.max(1, Math.round(CELL * 0.20));
     if (state.rushActive) {
       const pulse = 0.7 + 0.3 * Math.abs(Math.sin(this.time.now / 160));
       gfx.fillStyle(0xaa00ff, pulse);
       for (let i = 1; i < state.snake.length; i++) {
         const s = state.snake[i];
-        gfx.fillRoundedRect(s.x * CELL + 2, HUD_H + s.y * CELL + 2, CELL - 4, CELL - 4, 4);
+        gfx.fillRoundedRect(s.x * CELL + _bPad, HUD_H + s.y * CELL + _bPad, CELL - _bPad * 2, CELL - _bPad * 2, _bR);
       }
       // Snake head (rushed)
       const head = state.snake[0];
       gfx.fillStyle(0xcc44ff, 1);
-      gfx.fillRoundedRect(head.x * CELL + 1, HUD_H + head.y * CELL + 1, CELL - 2, CELL - 2, 6);
+      gfx.fillRoundedRect(head.x * CELL + _hPad, HUD_H + head.y * CELL + _hPad, CELL - _hPad * 2, CELL - _hPad * 2, _hR);
     } else {
       gfx.fillStyle(C_SNAKE_BODY, 1);
       for (let i = 1; i < state.snake.length; i++) {
         const s = state.snake[i];
-        gfx.fillRoundedRect(s.x * CELL + 2, HUD_H + s.y * CELL + 2, CELL - 4, CELL - 4, 4);
+        gfx.fillRoundedRect(s.x * CELL + _bPad, HUD_H + s.y * CELL + _bPad, CELL - _bPad * 2, CELL - _bPad * 2, _bR);
       }
       // Snake head (normal)
       const head = state.snake[0];
       gfx.fillStyle(C_SNAKE_HEAD, 1);
-      gfx.fillRoundedRect(head.x * CELL + 1, HUD_H + head.y * CELL + 1, CELL - 2, CELL - 2, 6);
+      gfx.fillRoundedRect(head.x * CELL + _hPad, HUD_H + head.y * CELL + _hPad, CELL - _hPad * 2, CELL - _hPad * 2, _hR);
     }
   }
 
@@ -954,12 +1003,13 @@ class GameScene extends Phaser.Scene {
 
   // 007 — spawn fading ghost rectangles at positions of removed segments
   spawnGhosts(segments) {
+    const gp = Math.max(1, Math.round(CELL * 0.08));
     for (const { x, y } of segments) {
       const rect = this.add.rectangle(
         x * CELL + CELL / 2,
         HUD_H + y * CELL + CELL / 2,
-        CELL - 4,
-        CELL - 4,
+        CELL - gp * 2,
+        CELL - gp * 2,
         C_SNAKE_BODY
       );
       rect.setDepth(1);
@@ -1128,7 +1178,8 @@ class GameScene extends Phaser.Scene {
       const txt = this.add.text(x + 16, textY, '\u00D7' + count, {
         fontFamily: 'Arial',
         fontSize:   '18px',
-        color:      '#ffffff'
+        color:      '#ffffff',
+        resolution: DPR
       }).setOrigin(0, 0.5);
       this.cardStripTexts.push(txt);
 
@@ -1217,7 +1268,8 @@ class GameOverScene extends Phaser.Scene {
       fontFamily: '"Trebuchet MS", Arial',
       fontSize:   '48px',
       fontStyle:  'bold',
-      color:      titleColor
+      color:      titleColor,
+      resolution: DPR
     }).setOrigin(0.5);
 
     // Final score
@@ -1225,7 +1277,8 @@ class GameOverScene extends Phaser.Scene {
       fontFamily: '"Trebuchet MS", Arial',
       fontSize:   '32px',
       fontStyle:  'bold',
-      color:      '#ffffff'
+      color:      '#ffffff',
+      resolution: DPR
     }).setOrigin(0.5);
 
     // T019 — personal best
@@ -1233,7 +1286,8 @@ class GameOverScene extends Phaser.Scene {
       fontFamily: '"Trebuchet MS", Arial',
       fontSize:   '26px',
       fontStyle:  'bold',
-      color:      '#ffeb3b'
+      color:      '#ffeb3b',
+      resolution: DPR
     }).setOrigin(0.5);
 
     if (data.score > 0 && data.score >= data.personalBest) {
@@ -1241,7 +1295,8 @@ class GameOverScene extends Phaser.Scene {
         fontFamily: '"Trebuchet MS", Arial',
         fontSize:   '26px',
         fontStyle:  'bold',
-        color:      '#ffd700'
+        color:      '#ffd700',
+        resolution: DPR
       }).setOrigin(0.5);
       this.tweens.add({
         targets:  rec,
@@ -1294,7 +1349,8 @@ class MenuScene extends Phaser.Scene {
       fontFamily: '"Trebuchet MS", Arial',
       fontSize:   '72px',
       fontStyle:  'bold',
-      color:      '#00e676'
+      color:      '#00e676',
+      resolution: DPR
     }).setOrigin(0.5);
     this.tweens.add({
       targets:  title,
@@ -1309,7 +1365,8 @@ class MenuScene extends Phaser.Scene {
     this.add.text(CANVAS_W / 2, CANVAS_H * 0.42, t('controls'), {
       fontFamily: '"Trebuchet MS", Arial',
       fontSize:   '20px',
-      color:      '#cccccc'
+      color:      '#cccccc',
+      resolution: DPR
     }).setOrigin(0.5);
 
     // T021 — JOGAR button
@@ -1338,7 +1395,8 @@ class MenuScene extends Phaser.Scene {
         fontFamily: '"Trebuchet MS", Arial',
         fontSize:   '22px',
         fontStyle:  'bold',
-        color:      '#ffeb3b'
+        color:      '#ffeb3b',
+        resolution: DPR
       }).setOrigin(0.5);
     }
   }
@@ -1365,7 +1423,8 @@ class LegendScene extends Phaser.Scene {
       fontFamily: '"Trebuchet MS", Arial',
       fontSize:   '28px',
       fontStyle:  'bold',
-      color:      '#00e676'
+      color:      '#00e676',
+      resolution: DPR
     }).setOrigin(0, 0.5);
 
     // BGM toggle button (top-right, same row as title)
@@ -1373,7 +1432,8 @@ class LegendScene extends Phaser.Scene {
     const lgBgmBtn = this.add.text(CANVAS_W - 76, 32, isMuted() ? '🔇' : '🔊', {
       fontFamily: '"Trebuchet MS", Arial',
       fontSize:   '22px',
-      color:      '#ffffff'
+      color:      '#ffffff',
+      resolution: DPR
     }).setOrigin(0.5)
       .setInteractive({ useHandCursor: true })
       .on('pointerover', () => lgBgmBtn.setScale(1.15))
@@ -1390,7 +1450,8 @@ class LegendScene extends Phaser.Scene {
     const lgSfxBtn = this.add.text(CANVAS_W - 36, 32, isSfxMuted() ? '🔕' : '🔔', {
       fontFamily: '"Trebuchet MS", Arial',
       fontSize:   '22px',
-      color:      '#ffffff'
+      color:      '#ffffff',
+      resolution: DPR
     }).setOrigin(0.5)
       .setInteractive({ useHandCursor: true })
       .on('pointerover', () => lgSfxBtn.setScale(1.15))
@@ -1415,9 +1476,12 @@ class LegendScene extends Phaser.Scene {
     ];
 
     const sepGfx = this.add.graphics();  // separators always full opacity
-    const ROW_H   = 64;
+    const ROW_H   = Math.min(90, Math.floor((CANVAS_H - 200) / entries.length));
     const Y_START = 58;
     const specialEnabled = isSpecialFoodsEnabled();
+    const _textW    = CANVAS_W - 82;  // available width for text after icon
+    const _nameFsz  = Math.max(14, Math.round(22 * Math.min(1, CANVAS_W / 400))) + 'px';
+    const _descFsz  = Math.max(12, Math.round(18 * Math.min(1, CANVAS_W / 400))) + 'px';
 
     entries.forEach((entry, i) => {
       const rowTop = Y_START + i * ROW_H;
@@ -1429,11 +1493,13 @@ class LegendScene extends Phaser.Scene {
 
       // Icon
       if (entry.type === 'OBSTACLE') {
+        const S = CELL / 28;
+        const hs = Math.round(14 * S), xl = Math.round(10 * S);
         iconGfx.fillStyle(C_OBSTACLE, 1);
-        iconGfx.fillRect(cx - 14, cy - 14, 28, 28);
-        iconGfx.lineStyle(2, 0x263238, 1);
-        iconGfx.lineBetween(cx - 10, cy - 10, cx + 10, cy + 10);
-        iconGfx.lineBetween(cx + 10, cy - 10, cx - 10, cy + 10);
+        iconGfx.fillRect(cx - hs, cy - hs, hs * 2, hs * 2);
+        iconGfx.lineStyle(Math.max(1, Math.round(2 * S)), 0x263238, 1);
+        iconGfx.lineBetween(cx - xl, cy - xl, cx + xl, cy + xl);
+        iconGfx.lineBetween(cx + xl, cy - xl, cx - xl, cy + xl);
       } else {
         drawFoodShape(iconGfx, { type: entry.type, visible: true }, cx, cy);
       }
@@ -1441,16 +1507,20 @@ class LegendScene extends Phaser.Scene {
       // Name
       const nameText = this.add.text(72, rowTop + 8, entry.nome, {
         fontFamily: '"Trebuchet MS", Arial',
-        fontSize:   '22px',
+        fontSize:   _nameFsz,
         fontStyle:  'bold',
-        color:      '#ffffff'
+        color:      '#ffffff',
+        wordWrap:   { width: _textW },
+        resolution: DPR
       });
 
       // Description
       const descText = this.add.text(72, rowTop + 34, entry.desc, {
         fontFamily: '"Trebuchet MS", Arial',
-        fontSize:   '18px',
-        color:      '#cccccc'
+        fontSize:   _descFsz,
+        color:      '#cccccc',
+        wordWrap:   { width: _textW },
+        resolution: DPR
       });
 
       // Separator (skip after last row)
@@ -1470,7 +1540,7 @@ class LegendScene extends Phaser.Scene {
     // Toggle button — disable / re-enable special foods
     const toggleLabel = specialEnabled ? t('disableSpecials') : t('enableSpecials');
     const toggleColor = specialEnabled ? 0x757575 : 0x43a047;
-    const toggleBtn = makeButton(this, CANVAS_W / 2, 490, toggleLabel, toggleColor, '#ffffff', 280, 52);
+    const toggleBtn = makeButton(this, CANVAS_W / 2, Y_START + entries.length * ROW_H + 30, toggleLabel, toggleColor, '#ffffff', Math.min(280, CANVAS_W - 40), 52);
     toggleBtn.gfx.on('pointerup', () => {
       setSpecialFoodsEnabled(!specialEnabled);
       this.scene.restart();
@@ -1501,7 +1571,7 @@ class LegendScene extends Phaser.Scene {
     });
 
     // Jogar button — starts the game
-    const playBtn = makeButton(this, CANVAS_W / 2, 570, t('play'), 0x00c853, '#ffffff', 280, 56);
+    const playBtn = makeButton(this, CANVAS_W / 2, CANVAS_H - 56, t('play'), 0x00c853, '#ffffff', Math.min(280, CANVAS_W - 40), 52);
     let going = false;
     const startGame = () => {
       if (going) return;
@@ -1520,7 +1590,6 @@ class LegendScene extends Phaser.Scene {
 // ============================================================
 // T024 — PHASER GAME BOOTSTRAP
 // ============================================================
-const isMobile = window.matchMedia('(pointer: coarse)').matches;
 
 const config = {
   type:            Phaser.AUTO,
@@ -1532,10 +1601,7 @@ const config = {
     createContainer: true  // required for this.add.dom() language selector in LegendScene
   },
   ...(isMobile ? {
-    scale: {
-      mode:       Phaser.Scale.FIT,
-      autoCenter: Phaser.Scale.CENTER_HORIZONTALLY
-    }
+    scale: { mode: Phaser.Scale.NONE, autoCenter: Phaser.Scale.CENTER_BOTH }
   } : {}),
   scene:           [MenuScene, GameScene, GameOverScene, LegendScene]
 };
