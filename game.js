@@ -1414,21 +1414,24 @@ class LegendScene extends Phaser.Scene {
     this.personalBest = data?.personalBest ?? getPersonalBest();
 
     // Interstitial ad — black overlay blocks input until SDK_GAME_START fires
-    const _adOverlay = this.add.rectangle(CANVAS_W / 2, CANVAS_H / 2, CANVAS_W, CANVAS_H, 0x000000, 1).setDepth(1000);
-    this.input.enabled = false;
+    // skipAd is set when restarting due to toggle/language change (not a new play session)
     let _langSelRef = null; // filled after DOM element is created
-    const _dismissAd = () => {
-      window.removeEventListener('gd_game_start', _dismissAd);
-      _adOverlay.destroy();
-      this.input.enabled = true;
-      if (_langSelRef) _langSelRef.node.style.visibility = 'visible';
-    };
-    this.events.once('shutdown', () => window.removeEventListener('gd_game_start', _dismissAd));
-    window.addEventListener('gd_game_start', _dismissAd);
-    if (typeof gdsdk !== 'undefined' && gdsdk.showAd) {
-      gdsdk.showAd(gdsdk.AdType.Interstitial);
-    } else {
-      _dismissAd();
+    if (!data?.skipAd) {
+      const _adOverlay = this.add.rectangle(CANVAS_W / 2, CANVAS_H / 2, CANVAS_W, CANVAS_H, 0x000000, 1).setDepth(1000);
+      this.input.enabled = false;
+      const _dismissAd = () => {
+        window.removeEventListener('gd_game_start', _dismissAd);
+        _adOverlay.destroy();
+        this.input.enabled = true;
+        if (_langSelRef) _langSelRef.node.style.visibility = 'visible';
+      };
+      this.events.once('shutdown', () => window.removeEventListener('gd_game_start', _dismissAd));
+      window.addEventListener('gd_game_start', _dismissAd);
+      if (typeof gdsdk !== 'undefined' && gdsdk.showAd) {
+        gdsdk.showAd(gdsdk.AdType.Interstitial);
+      } else {
+        _dismissAd();
+      }
     }
 
     // Background
@@ -1561,7 +1564,7 @@ class LegendScene extends Phaser.Scene {
     const toggleBtn = makeButton(this, CANVAS_W / 2, Y_START + entries.length * ROW_H + 30, toggleLabel, toggleColor, '#ffffff', Math.min(280, CANVAS_W - 40), 52);
     toggleBtn.gfx.on('pointerup', () => {
       setSpecialFoodsEnabled(!specialEnabled);
-      this.scene.restart();
+      this.scene.restart({ personalBest: this.personalBest, skipAd: true });
     });
 
     // Language selector — top-right, left of audio buttons
@@ -1583,10 +1586,12 @@ class LegendScene extends Phaser.Scene {
       `<select style="background:#0f3460;color:#fff;border:1px solid #00e676;border-radius:6px;padding:2px 6px;font-size:13px;font-family:'Trebuchet MS',Arial,sans-serif;cursor:pointer;outline:none;min-width:110px;visibility:hidden;">${_langOpts}</select>`
     );
     _langSelRef = _langSel; // expose to _dismissAd
+    // If no ad is shown (skipAd or no SDK), make the dropdown visible immediately
+    if (data?.skipAd) _langSel.node.style.visibility = 'visible';
     _langSel.addListener('change');
     _langSel.on('change', (evt) => {
       setLang(evt.target.value);
-      this.scene.restart();
+      this.scene.restart({ personalBest: this.personalBest, skipAd: true });
     });
 
     // Jogar button — starts the game
