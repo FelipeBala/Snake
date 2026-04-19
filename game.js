@@ -1413,6 +1413,22 @@ class LegendScene extends Phaser.Scene {
   create(data) {
     this.personalBest = data?.personalBest ?? getPersonalBest();
 
+    // Interstitial ad — black overlay blocks input until SDK_GAME_START fires
+    const _adOverlay = this.add.rectangle(CANVAS_W / 2, CANVAS_H / 2, CANVAS_W, CANVAS_H, 0x000000, 1).setDepth(1000);
+    this.input.enabled = false;
+    const _dismissAd = () => {
+      window.removeEventListener('gd_game_start', _dismissAd);
+      _adOverlay.destroy();
+      this.input.enabled = true;
+    };
+    this.events.once('shutdown', () => window.removeEventListener('gd_game_start', _dismissAd));
+    window.addEventListener('gd_game_start', _dismissAd);
+    if (typeof gdsdk !== 'undefined' && gdsdk.showAd) {
+      gdsdk.showAd(gdsdk.AdType.Interstitial);
+    } else {
+      _dismissAd();
+    }
+
     // Background
     const bg = this.add.graphics();
     bg.fillStyle(C_BG, 1);

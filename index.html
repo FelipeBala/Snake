@@ -5,6 +5,35 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#1a1a2e">
   <title>🐍 Snake!</title>
+  <script>
+    window["GD_OPTIONS"] = {
+      "gameId": "10afdbca5298478abddecd5b39dc5c93",
+      "onEvent": function(event) {
+        switch (event.name) {
+          case "SDK_GAME_START":
+            window.dispatchEvent(new CustomEvent('gd_game_start'));
+            break;
+          case "SDK_GAME_PAUSE":
+            window.dispatchEvent(new CustomEvent('gd_game_pause'));
+            break;
+          case "SDK_GDPR_TRACKING":
+            break;
+          case "SDK_GDPR_TARGETING":
+            break;
+          case "SDK_REWARDED_WATCH_COMPLETE":
+            break;
+        }
+      }
+    };
+    (function(d, s, id) {
+      var js, fjs = d.getElementsByTagName(s)[0];
+      if (d.getElementById(id)) return;
+      js = d.createElement(s);
+      js.id = id;
+      js.src = 'https://html5.api.gamedistribution.com/main.min.js';
+      fjs.parentNode.insertBefore(js, fjs);
+    }(document, 'script', 'gamedistribution-jssdk'));
+  </script>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
