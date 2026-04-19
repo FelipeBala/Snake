@@ -665,12 +665,12 @@ class GameScene extends Phaser.Scene {
   // T002 — load audio assets
   preload() {
     this.load.audio('bgm',              'audio/bgm.mp3');
-    this.load.audio('sfx_eat_standard', ['audio/sfx_eat_standard.ogg', 'audio/sfx_eat_standard.mp3']);
-    this.load.audio('sfx_eat_penta',    ['audio/sfx_eat_penta.ogg',    'audio/sfx_eat_penta.mp3']);
-    this.load.audio('sfx_eat_rush',     ['audio/sfx_eat_rush.ogg',     'audio/sfx_eat_rush.mp3']);
-    this.load.audio('sfx_eat_star',     ['audio/sfx_eat_star.ogg',     'audio/sfx_eat_star.mp3']);
-    this.load.audio('sfx_eat_bomb',     ['audio/sfx_eat_bomb.ogg',     'audio/sfx_eat_bomb.mp3']);
-    this.load.audio('sfx_collision',    ['audio/sfx_collision.ogg',    'audio/sfx_collision.mp3']);
+    this.load.audio('sfx_eat_standard', 'audio/sfx_eat_standard.mp3');
+    this.load.audio('sfx_eat_penta',    'audio/sfx_eat_penta.mp3');
+    this.load.audio('sfx_eat_rush',     'audio/sfx_eat_rush.mp3');
+    this.load.audio('sfx_eat_star',     'audio/sfx_eat_star.mp3');
+    this.load.audio('sfx_eat_bomb',     'audio/sfx_eat_bomb.mp3');
+    this.load.audio('sfx_collision',    'audio/sfx_collision.mp3');
   }
 
   // T025 — scene setup
