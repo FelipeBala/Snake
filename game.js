@@ -1416,10 +1416,12 @@ class LegendScene extends Phaser.Scene {
     // Interstitial ad — black overlay blocks input until SDK_GAME_START fires
     const _adOverlay = this.add.rectangle(CANVAS_W / 2, CANVAS_H / 2, CANVAS_W, CANVAS_H, 0x000000, 1).setDepth(1000);
     this.input.enabled = false;
+    let _langSelRef = null; // filled after DOM element is created
     const _dismissAd = () => {
       window.removeEventListener('gd_game_start', _dismissAd);
       _adOverlay.destroy();
       this.input.enabled = true;
+      if (_langSelRef) _langSelRef.node.style.visibility = 'visible';
     };
     this.events.once('shutdown', () => window.removeEventListener('gd_game_start', _dismissAd));
     window.addEventListener('gd_game_start', _dismissAd);
@@ -1578,8 +1580,9 @@ class LegendScene extends Phaser.Scene {
     ].map(l => `<option value="${l.code}"${l.code === _curLang ? ' selected' : ''}>${l.label}</option>`).join('');
 
     const _langSel = this.add.dom(CANVAS_W - 165, 32).createFromHTML(
-      `<select style="background:#0f3460;color:#fff;border:1px solid #00e676;border-radius:6px;padding:2px 6px;font-size:13px;font-family:'Trebuchet MS',Arial,sans-serif;cursor:pointer;outline:none;min-width:110px;">${_langOpts}</select>`
+      `<select style="background:#0f3460;color:#fff;border:1px solid #00e676;border-radius:6px;padding:2px 6px;font-size:13px;font-family:'Trebuchet MS',Arial,sans-serif;cursor:pointer;outline:none;min-width:110px;visibility:hidden;">${_langOpts}</select>`
     );
+    _langSelRef = _langSel; // expose to _dismissAd
     _langSel.addListener('change');
     _langSel.on('change', (evt) => {
       setLang(evt.target.value);
