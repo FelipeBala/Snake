@@ -1428,15 +1428,12 @@ class LegendScene extends Phaser.Scene {
         if (_langSelRef) _langSelRef.setVisible(true);
       };
       this.events.once('shutdown', () => window.removeEventListener('gd_game_start', _dismissAd));
-      // Guard: SDK_GAME_START may have fired before this listener was registered
-      if (window._gdGameStarted) {
-        _dismissAd();
-      } else if (typeof gdsdk !== 'undefined' && gdsdk.showAd) {
-        window._gdGameStarted = false; // reset for this new ad session
-        window.addEventListener('gd_game_start', _dismissAd);
+      // Reset flag and register listener BEFORE showAd() to avoid race conditions
+      window._gdGameStarted = false;
+      window.addEventListener('gd_game_start', _dismissAd);
+      if (typeof gdsdk !== 'undefined' && gdsdk.showAd) {
         gdsdk.showAd(gdsdk.AdType.Interstitial);
       } else {
-        window.addEventListener('gd_game_start', _dismissAd);
         _dismissAd(); // no SDK — dismiss immediately
       }
     }
