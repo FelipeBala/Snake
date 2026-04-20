@@ -11,6 +11,7 @@
       "onEvent": function(event) {
         switch (event.name) {
           case "SDK_GAME_START":
+            window._gdGameStarted = true;
             window.dispatchEvent(new CustomEvent('gd_game_start'));
             break;
           case "SDK_GAME_PAUSE":

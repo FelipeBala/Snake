@@ -1416,21 +1416,28 @@ class LegendScene extends Phaser.Scene {
     // Interstitial ad — black overlay blocks input until SDK_GAME_START fires
     // skipAd is set when restarting due to toggle/language change (not a new play session)
     let _langSelRef = null; // filled after DOM element is created
+    let _adDone = !!data?.skipAd; // true immediately when no ad should run
     if (!data?.skipAd) {
       const _adOverlay = this.add.rectangle(CANVAS_W / 2, CANVAS_H / 2, CANVAS_W, CANVAS_H, 0x000000, 1).setDepth(1000);
       this.input.enabled = false;
       const _dismissAd = () => {
+        _adDone = true;
         window.removeEventListener('gd_game_start', _dismissAd);
         _adOverlay.destroy();
         this.input.enabled = true;
-        if (_langSelRef) _langSelRef.node.style.visibility = 'visible';
+        if (_langSelRef) _langSelRef.setVisible(true);
       };
       this.events.once('shutdown', () => window.removeEventListener('gd_game_start', _dismissAd));
-      window.addEventListener('gd_game_start', _dismissAd);
-      if (typeof gdsdk !== 'undefined' && gdsdk.showAd) {
+      // Guard: SDK_GAME_START may have fired before this listener was registered
+      if (window._gdGameStarted) {
+        _dismissAd();
+      } else if (typeof gdsdk !== 'undefined' && gdsdk.showAd) {
+        window._gdGameStarted = false; // reset for this new ad session
+        window.addEventListener('gd_game_start', _dismissAd);
         gdsdk.showAd(gdsdk.AdType.Interstitial);
       } else {
-        _dismissAd();
+        window.addEventListener('gd_game_start', _dismissAd);
+        _dismissAd(); // no SDK — dismiss immediately
       }
     }
 
@@ -1583,11 +1590,11 @@ class LegendScene extends Phaser.Scene {
     ].map(l => `<option value="${l.code}"${l.code === _curLang ? ' selected' : ''}>${l.label}</option>`).join('');
 
     const _langSel = this.add.dom(CANVAS_W - 165, 32).createFromHTML(
-      `<select style="background:#0f3460;color:#fff;border:1px solid #00e676;border-radius:6px;padding:2px 6px;font-size:13px;font-family:'Trebuchet MS',Arial,sans-serif;cursor:pointer;outline:none;min-width:110px;visibility:hidden;">${_langOpts}</select>`
+      `<select style="background:#0f3460;color:#fff;border:1px solid #00e676;border-radius:6px;padding:2px 6px;font-size:13px;font-family:'Trebuchet MS',Arial,sans-serif;cursor:pointer;outline:none;min-width:110px;">${_langOpts}</select>`
     );
     _langSelRef = _langSel; // expose to _dismissAd
-    // If no ad is shown (skipAd or no SDK), make the dropdown visible immediately
-    if (data?.skipAd) _langSel.node.style.visibility = 'visible';
+    // Hide until ad completes; show immediately if no ad is needed
+    if (!_adDone) _langSel.setVisible(false);
     _langSel.addListener('change');
     _langSel.on('change', (evt) => {
       setLang(evt.target.value);
